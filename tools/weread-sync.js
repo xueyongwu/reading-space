@@ -5,7 +5,7 @@
  *   1. 电脑浏览器登录 https://weread.qq.com，打开任意一本书进入「阅读页」（划线只有在阅读页才能读到）；
  *   2. 打开控制台（Mac：Cmd+Option+J；Windows：F12），粘贴本脚本回车；
  *      如果页面卡在「Paused in debugger」，按 Cmd/Ctrl+F8 停用断点，再按 F8 继续；
- *   3. 等左下角面板出结果，点「下载同步文件」，把文件传到手机，在工作台「数据与备份 → 选择备份文件」里导入。
+ *   3. 等左下角面板出结果，点「下载同步文件」，把文件传到手机，在工作台「设置 → 选择备份文件」里导入。
  *
  * 读取内容：书架（书名/作者/封面/分类/是否读完）、进度百分比、开始/读完时间、累计阅读时长、划线（文字/章节/时间）。
  * 只导入「有进度、已读完或有划线」的书。
@@ -185,7 +185,7 @@
     <div class="st">书架共 ${shelfBooks.length} 本，跳过 ${skipped} 本没有进度、没读完也没有划线的书。文件约 ${Math.ceil(json.length / 1024)} KB。</div>
     ${warnings.length ? `<h3 class="warn">注意（${warnings.length}）</h3>${warnings.map((w) => `<div class="warn">· ${esc(w)}</div>`).join('')}` : '<div class="ok" style="margin-top:6px">✓ 全部读取成功</div>'}
     <div class="btns"><button id="dl">下载同步文件</button><button id="cp" class="ghost">复制为文本</button></div>
-    <div class="st" style="margin-top:6px">下载后把文件传到手机（AirDrop，或发到微信「文件传输助手」再「保存到文件」），在工作台「数据与备份 → 选择备份文件」里导入。</div>
+    <div class="st" style="margin-top:6px">下载后把文件传到手机（AirDrop，或发到微信「文件传输助手」再「保存到文件」），在工作台「设置 → 选择备份文件」里导入。</div>
     <h3>明细</h3>
     <table><tr><th>书名</th><th>进度</th><th>读完</th><th>划线</th></tr>
       ${rows.map((r) => `<tr><td>${esc(cut(r.title, 18))}</td><td>${r.progress}%</td><td>${r.finished ? (r.finishDate || '是') : ''}</td><td>${r.expected ? `${r.got}${r.got !== r.expected ? ` <span class="warn">/ 登记 ${r.expected}</span>` : ''}` : ''}</td></tr>`).join('')}

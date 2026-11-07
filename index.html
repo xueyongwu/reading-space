@@ -14,6 +14,17 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script>
+/* 页面渲染前先应用外观设置，避免闪烁 */
+try {
+  var r = document.documentElement, a = localStorage.getItem('rs-accent'), m = localStorage.getItem('rs-theme');
+  if (a) r.setAttribute('data-accent', a);
+  if (m === 'light' || m === 'dark') {
+    r.setAttribute('data-theme', m);
+    document.querySelectorAll('meta[name="theme-color"]').forEach(function (el) { el.setAttribute('content', m === 'dark' ? '#1B1D1A' : '#F5F1E8'); });
+  }
+} catch (e) {}
+</script>
 <style>
 :root {
   --bg: #F5F1E8;
@@ -40,8 +51,9 @@
   --safe-t: env(safe-area-inset-top, 0px);
   color-scheme: light;
 }
+/* 深色：跟随系统且没手动选浅色时，或手动选了深色时 */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #1B1D1A;
     --surface: #242723;
     --surface-2: #2E322D;
@@ -63,6 +75,42 @@
     color-scheme: dark;
   }
 }
+:root[data-theme="dark"] {
+  --bg: #1B1D1A;
+  --surface: #242723;
+  --surface-2: #2E322D;
+  --text: #E9E5DA;
+  --muted: #9C978B;
+  --line: #373B35;
+  --primary: #8DB59A;
+  --primary-ink: #16201A;
+  --primary-soft: #2B3A30;
+  --accent: #C9A66B;
+  --accent-soft: rgba(201, 166, 107, .25);
+  --danger: #D9776A;
+  --heat0: #2E322D;
+  --heat1: #33463A;
+  --heat2: #47684F;
+  --heat3: #66906F;
+  --heat4: #8DB59A;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .25);
+  color-scheme: dark;
+}
+/* 主题色：默认墨绿，其余通过 <html data-accent> 切换 */
+:root[data-accent="blue"] { --primary: #2E4A62; --primary-soft: #E1E8EE; --heat1: #D6E0E9; --heat2: #A7BCCD; --heat3: #6C8AA3; --heat4: #2E4A62; }
+:root[data-accent="brown"] { --primary: #6B4A32; --primary-soft: #EEE5DA; --heat1: #E8DCCB; --heat2: #CDB596; --heat3: #9C7A58; --heat4: #6B4A32; }
+:root[data-accent="plum"] { --primary: #5B3F5E; --primary-soft: #ECE4EC; --heat1: #E5DAE4; --heat2: #C5ACC3; --heat3: #8E6C8C; --heat4: #5B3F5E; }
+:root[data-accent="ink"] { --primary: #33342F; --primary-soft: #E8E5DD; --heat1: #E2DED3; --heat2: #BDB8AB; --heat3: #7F7B70; --heat4: #33342F; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"])[data-accent="blue"] { --primary: #8FADC6; --primary-ink: #141B22; --primary-soft: #28333D; --heat1: #2F3B46; --heat2: #43586A; --heat3: #61809A; --heat4: #8FADC6; }
+  :root:not([data-theme="light"])[data-accent="brown"] { --primary: #C9A585; --primary-ink: #1E1710; --primary-soft: #3A3028; --heat1: #3B322A; --heat2: #5A4A3A; --heat3: #876D54; --heat4: #C9A585; }
+  :root:not([data-theme="light"])[data-accent="plum"] { --primary: #B99BB8; --primary-ink: #1C141C; --primary-soft: #352B35; --heat1: #382D38; --heat2: #544254; --heat3: #7E647D; --heat4: #B99BB8; }
+  :root:not([data-theme="light"])[data-accent="ink"] { --primary: #CFCBC0; --primary-ink: #1B1D1A; --primary-soft: #33352F; --heat1: #353731; --heat2: #4D4F48; --heat3: #7A7B73; --heat4: #CFCBC0; }
+}
+:root[data-theme="dark"][data-accent="blue"] { --primary: #8FADC6; --primary-ink: #141B22; --primary-soft: #28333D; --heat1: #2F3B46; --heat2: #43586A; --heat3: #61809A; --heat4: #8FADC6; }
+:root[data-theme="dark"][data-accent="brown"] { --primary: #C9A585; --primary-ink: #1E1710; --primary-soft: #3A3028; --heat1: #3B322A; --heat2: #5A4A3A; --heat3: #876D54; --heat4: #C9A585; }
+:root[data-theme="dark"][data-accent="plum"] { --primary: #B99BB8; --primary-ink: #1C141C; --primary-soft: #352B35; --heat1: #382D38; --heat2: #544254; --heat3: #7E647D; --heat4: #B99BB8; }
+:root[data-theme="dark"][data-accent="ink"] { --primary: #CFCBC0; --primary-ink: #1B1D1A; --primary-soft: #33352F; --heat1: #353731; --heat2: #4D4F48; --heat3: #7A7B73; --heat4: #CFCBC0; }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
@@ -264,6 +312,16 @@ mark { background: var(--accent-soft); color: inherit; border-radius: 3px; paddi
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .seg.two { grid-template-columns: 1fr 1fr; }
+.modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.modes button { height: 42px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); font-size: 14px; }
+.modes button.on { background: var(--primary); border-color: var(--primary); color: var(--primary-ink); font-weight: 600; }
+.set-label { font-size: 13px; color: var(--muted); margin: 0 0 8px; }
+.swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.swatch { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
+.swatch i { width: 28px; height: 28px; border-radius: 50%; background: var(--sw); box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .swatch i { background: var(--sw-d); } }
+:root[data-theme="dark"] .swatch i { background: var(--sw-d); }
+.swatch.on { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); font-weight: 600; }
 .seg label { position: relative; }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
 .seg span { display: flex; align-items: center; justify-content: center; height: 42px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); font-size: 14px; }
@@ -292,6 +350,7 @@ mark { background: var(--accent-soft); color: inherit; border-radius: 3px; paddi
   position: fixed; right: max(16px, calc(50% - 264px)); bottom: calc(78px + var(--safe-b)); z-index: 20;
   height: 52px; padding: 0 20px 0 16px; border-radius: 26px; border: 0; background: var(--primary); color: var(--primary-ink);
   display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; box-shadow: 0 6px 18px rgba(47, 82, 65, .35);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--primary) 35%, transparent);
 }
 .fab:active { transform: scale(.96); }
 .tabbar {
@@ -853,13 +912,61 @@ function viewBook() {
   ${logs.length ? `<section class="card"><div class="card-title"><h2>阅读记录</h2></div><ul class="log-list">${logs.slice(0, 30).map((l) => `<li><span>${fmtDate(l.date, true)}</span><span class="muted">${logText(l)}</span></li>`).join('')}</ul>${logs.length > 30 ? `<div class="small muted" style="margin-top:8px">仅显示最近 30 条</div>` : ''}</section>` : ''}`;
 }
 
+/* ---------- 外观：显示模式 + 主题色（设备级偏好，存在 localStorage，不进备份） ---------- */
+const THEME_MODES = [
+  { key: 'system', name: '跟随系统' },
+  { key: 'light', name: '浅色' },
+  { key: 'dark', name: '深色' },
+];
+function currentTheme() {
+  const v = document.documentElement.getAttribute('data-theme');
+  return v === 'light' || v === 'dark' ? v : 'system';
+}
+function setTheme(mode) {
+  const root = document.documentElement;
+  if (mode === 'light' || mode === 'dark') root.setAttribute('data-theme', mode);
+  else { mode = 'system'; root.removeAttribute('data-theme'); }
+  // 状态栏 / 地址栏颜色跟着变
+  const metas = document.querySelectorAll('meta[name="theme-color"]');
+  metas.forEach((el) => {
+    const forDark = (el.getAttribute('media') || '').includes('dark');
+    el.setAttribute('content', mode === 'system' ? (forDark ? '#1B1D1A' : '#F5F1E8') : mode === 'dark' ? '#1B1D1A' : '#F5F1E8');
+  });
+  try { if (mode === 'system') localStorage.removeItem('rs-theme'); else localStorage.setItem('rs-theme', mode); } catch (e) { /* 存不了就只在本次生效 */ }
+}
+const ACCENTS = [
+  { key: 'green', name: '墨绿', color: '#2F5241', dark: '#8DB59A' },
+  { key: 'blue', name: '黛蓝', color: '#2E4A62', dark: '#8FADC6' },
+  { key: 'brown', name: '檀褐', color: '#6B4A32', dark: '#C9A585' },
+  { key: 'plum', name: '绛紫', color: '#5B3F5E', dark: '#B99BB8' },
+  { key: 'ink', name: '墨色', color: '#33342F', dark: '#CFCBC0' },
+];
+function currentAccent() {
+  const v = document.documentElement.getAttribute('data-accent');
+  return ACCENTS.some((a) => a.key === v) ? v : 'green';
+}
+function setAccent(key) {
+  if (!ACCENTS.some((a) => a.key === key)) key = 'green';
+  if (key === 'green') document.documentElement.removeAttribute('data-accent');
+  else document.documentElement.setAttribute('data-accent', key);
+  try { if (key === 'green') localStorage.removeItem('rs-accent'); else localStorage.setItem('rs-accent', key); } catch (e) { /* 存不了就只在本次生效 */ }
+}
+
 /* ---------- 视图：数据与设置 ---------- */
 function viewSettings() {
   const last = S.meta.lastExportAt;
   const hasBackup = !!ui.backupInfo;
   return `
   <div class="back-row"><button class="icon-btn" data-act="back" aria-label="返回">${ICON.back}</button><span>返回</span></div>
-  <header class="page-head"><div><h1>数据与备份</h1><div class="sub">所有数据只保存在这台设备的浏览器里</div></div></header>
+  <header class="page-head"><div><h1>设置</h1><div class="sub">所有数据只保存在这台设备的浏览器里</div></div></header>
+  <section class="card">
+    <div class="card-title"><h2>外观</h2></div>
+    <div class="set-label">显示模式</div>
+    <div class="modes" role="radiogroup" aria-label="显示模式">${THEME_MODES.map((m) => `<button class="${currentTheme() === m.key ? 'on' : ''}" role="radio" aria-checked="${currentTheme() === m.key}" data-act="set-theme" data-v="${m.key}">${m.name}</button>`).join('')}</div>
+    <div class="set-label" style="margin-top:14px">主题色</div>
+    <div class="swatches" role="radiogroup" aria-label="主题色">${ACCENTS.map((a) => `<button class="swatch ${currentAccent() === a.key ? 'on' : ''}" role="radio" aria-checked="${currentAccent() === a.key}" data-act="set-accent" data-v="${a.key}" style="--sw:${a.color};--sw-d:${a.dark}"><i></i>${a.name}</button>`).join('')}</div>
+    <div class="small muted" style="margin-top:8px">只改变这台设备上的显示。「跟随系统」会随手机的深色模式自动切换。</div>
+  </section>
   <section class="card">
     <div class="card-title"><h2>数据概况</h2></div>
     <ul class="set-list">
@@ -1703,6 +1810,8 @@ const actions = {
   },
   'a2hs-help': () => openSheet('添加到主屏幕', `<div class="prose">${a2hsHelpHTML()}</div>`),
   'a2hs-hide': () => { S.meta.hideA2HS = true; save(); render(); },
+  'set-accent': (el) => { setAccent(el.dataset.v); render(); },
+  'set-theme': (el) => { setTheme(el.dataset.v); render(); },
 };
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-act]');
