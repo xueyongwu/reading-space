@@ -51,14 +51,25 @@
 
 ## 从微信读书同步
 
-微信读书没有开放接口。`tools/weread-sync.js` 在电脑浏览器里借用网页版的登录状态读取数据，生成同步文件，再导入工作台。
+微信读书没有开放接口。`tools/weread-sync.user.js` 在电脑浏览器里借用网页版的登录状态读取数据，复制到剪贴板，再到手机工作台导入。
+
+**第一次：安装油猴脚本**（只做一次）
+
+1. 电脑浏览器（Chrome / Edge / Safari 等）安装 [Tampermonkey](https://www.tampermonkey.net/) 扩展。
+   Chrome / Edge 还要在扩展管理页打开「开发者模式」（或在 Tampermonkey 的扩展详情里打开「允许运行用户脚本」），否则脚本不会运行。
+2. 打开 https://xueyongwu.github.io/reading-space/tools/weread-sync.user.js ，Tampermonkey 会弹出安装页，点「安装」。
+   以后脚本有更新，Tampermonkey 会自动更新。
+
+**每次同步**
 
 1. 电脑浏览器登录 https://weread.qq.com，**打开任意一本书进入阅读页**（划线只有在阅读页才读得到）。
-2. 打开控制台（Mac：`Cmd + Option + J`；Windows：`F12`），粘贴 `tools/weread-sync.js` 的全部内容，回车。
-   - 如果 Chrome 提示不允许粘贴，先按提示输入 `allow pasting`（中文版是「允许粘贴」）。
-   - 如果页面卡在「Paused in debugger」（微信读书的反调试），按 `Cmd/Ctrl + F8` 停用断点，再按 `F8` 继续。
-3. 左下角面板出结果后，点「下载同步文件」。
-4. 把文件传到手机（AirDrop，或发到微信「文件传输助手」后「保存到文件」），在工作台「设置 → 选择备份文件」里选它。
+2. 点左下角「⇪ 同步到阅读空间」，读完后数据会自动复制到剪贴板（没复制成功就点面板上的「复制到剪贴板」）。
+3. iPhone 上打开工作台 → 设置 →「从剪贴板导入」，确认预览后导入。
+   电脑上复制、手机上粘贴依赖苹果的「通用剪贴板」：Mac 和 iPhone 登录同一个 Apple ID，都打开蓝牙、Wi‑Fi 和「接力」。
+   不满足的话，点面板上的「下载文件」，用 AirDrop（或微信「文件传输助手」后「保存到文件」）传到手机，在「设置 → 选择备份文件」里选它。
+
+**不想装扩展**：在阅读页打开控制台（Mac：`Cmd + Option + J`；Windows：`F12`），粘贴 `tools/weread-sync.user.js` 的全部内容回车，效果一样。
+Chrome 提示不允许粘贴时，先按提示输入 `allow pasting`（中文版是「允许粘贴」）；页面卡在「Paused in debugger」（微信读书的反调试）时，按 `Cmd/Ctrl + F8` 停用断点，再按 `F8` 继续。
 
 同步的内容和规则：
 

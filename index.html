@@ -986,18 +986,22 @@ function viewSettings() {
   </section>
   <section class="card">
     <div class="card-title"><h2>导入数据</h2></div>
-    <p class="small muted" style="margin-top:-4px">从备份文件恢复，可选择覆盖或合并。导入前会自动保存一份当前数据的快照。</p>
-    <div class="btn-row"><button class="btn" data-act="import-file">选择备份文件</button><button class="btn" data-act="import-paste">粘贴文本导入</button></div>
+    <p class="small muted" style="margin-top:-4px">导入备份或微信读书同步数据。导入前会自动保存一份当前数据的快照。</p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn primary block" data-act="import-clipboard">从剪贴板导入</button>
+      <div class="btn-row"><button class="btn" data-act="import-file">选择备份文件</button><button class="btn" data-act="import-paste">粘贴文本导入</button></div>
+    </div>
     ${hasBackup ? `<div class="banner" style="margin:12px 0 0"><div class="grow small">有一份 ${esc(ui.backupInfo)} 的快照</div><button data-act="restore-backup">恢复</button></div>` : ''}
   </section>
   <section class="card prose">
     <div class="card-title"><h2>微信读书同步</h2></div>
     <div class="small muted" style="margin-top:-6px">上次同步：${S.meta.lastWereadSync ? fmtDate(dateKey(new Date(S.meta.lastWereadSync)), true) : '还没有同步过'}</div>
     <ol>
-      <li>在电脑浏览器登录 weread.qq.com，打开任意一本书进入<b>阅读页</b>；</li>
-      <li>运行同步脚本，点「下载同步文件」；</li>
-      <li>把文件传到手机（AirDrop、微信文件传输助手后「保存到文件」均可），在上方「选择备份文件」里选它。</li>
+      <li>电脑浏览器装好同步脚本（见使用说明），登录 weread.qq.com，打开任意一本书；</li>
+      <li>点阅读页左下角「同步到阅读空间」，数据会自动复制；</li>
+      <li>回到这里点上方「从剪贴板导入」。</li>
     </ol>
+    <div class="small muted">Mac 和 iPhone 需登录同一个 Apple ID 并开启「接力」，电脑上复制的内容才能在手机上粘贴。也可以在电脑上下载文件，用 AirDrop 传过来后「选择备份文件」。</div>
     <div class="small muted">同步会：新增书籍、更新进度和读完状态、补入新的划线。你在这里写的感悟、改过的书名分类都不会被覆盖；删除过的书和划线也不会再被加回来。</div>
   </section>
   <section class="card">
@@ -1583,7 +1587,7 @@ function sanitize(d, inCovers) {
 }
 
 /* ---------- 微信读书同步文件导入 ----------
- * 同步文件由 tools/weread-sync.js 在电脑上生成：{ app, kind: 'weread-sync', books[], highlights[] }
+ * 同步数据由 tools/weread-sync.user.js 在电脑上生成：{ app, kind: 'weread-sync', books[], highlights[] }
  * 规则：按微信读书编号对应；已有的书只更新进度/状态/累计时长，不改书名、分类、封面和你写的笔记；
  *       划线只新增不覆盖；删除过的书和划线不会再加回来；同步不生成阅读记录（日历只显示划线的真实日期）。 */
 async function handleWereadSync(obj) {
@@ -1752,9 +1756,23 @@ async function clearAll() {
   fillSettingsInfo();
 }
 
+async function importFromClipboard() {
+  let text = '';
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.readText) throw new Error('unsupported');
+    text = (await navigator.clipboard.readText()).trim();
+  } catch (e) {
+    toast('无法直接读取剪贴板，请手动粘贴');
+    openPasteImport();
+    return;
+  }
+  if (!text) { toast('剪贴板是空的，请先在电脑上复制'); return; }
+  if (!text.startsWith('{')) { toast('剪贴板里不是阅读空间的数据，请先在电脑上复制'); return; }
+  handleImport(text);
+}
 function openPasteImport() {
   openSheet('粘贴文本导入', `
-    <div class="field"><label for="paste-ta">把之前「复制为文本」得到的内容粘贴到这里</label><textarea id="paste-ta" style="min-height:180px;font-family:monospace;font-size:13px" placeholder='{"app":"reading-space", ...}'></textarea></div>
+    <div class="field"><label for="paste-ta">把复制得到的备份或同步数据粘贴到这里</label><textarea id="paste-ta" style="min-height:180px;font-family:monospace;font-size:13px" placeholder='{"app":"reading-space", ...}'></textarea></div>
     <button class="btn primary block" id="paste-go">导入</button>`, (root) => {
     $('#paste-go', root).addEventListener('click', () => {
       const v = $('#paste-ta', root).value.trim();
@@ -1798,6 +1816,7 @@ const actions = {
   'export-copy': () => exportCopy(),
   'import-file': () => { const i = $('#file-import'); i.value = ''; i.click(); },
   'import-paste': () => openPasteImport(),
+  'import-clipboard': () => importFromClipboard(),
   'restore-backup': () => restoreBackup(),
   'clear-sample': () => clearSample(),
   'clear-all': () => clearAll(),

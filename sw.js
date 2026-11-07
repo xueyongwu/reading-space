@@ -1,6 +1,6 @@
 /* 离线缓存：页面优先走网络（保证能拿到更新），断网时用缓存；其余静态文件优先用缓存。
  * 发布新版本时把 VERSION 改一下即可清掉旧缓存。 */
-const VERSION = 'rs-v3';
+const VERSION = 'rs-v4';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
