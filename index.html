@@ -263,6 +263,7 @@ mark { background: var(--accent-soft); color: inherit; border-radius: 3px; paddi
 .inp:focus, .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--primary); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.seg.two { grid-template-columns: 1fr 1fr; }
 .seg label { position: relative; }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
 .seg span { display: flex; align-items: center; justify-content: center; height: 42px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); font-size: 14px; }
@@ -359,8 +360,11 @@ mark { background: var(--accent-soft); color: inherit; border-radius: 3px; paddi
  * 数据结构：
  *   books: { id, title, author, category, status, totalPages, readPages, maxPage(记录过的最高页数),
  *            startedAt, finishedAt, coverUrl, createdAt, updatedAt, sample? }
- *   notes: { id, bookId, chapter, excerpt, thought, action, topics[], date, createdAt, updatedAt, sample? }
- *   logs : { id, bookId, date, pages, at, sample? }   // 每次进度增加记一条，日历和年度页数都从这里统计
+ *            progressMode('page'|'percent'), percent, maxPercent,   // 电子书按百分比记录
+ *            wereadId?, source?('weread'), readingSeconds? }        // 来自微信读书同步
+ *   notes: { id, bookId, chapter, excerpt, thought, action, topics[], date, createdAt, updatedAt, sample?, source?, wereadId? }
+ *   logs : { id, bookId, date, pages, percent?, at, sample? }   // 每次进度增加记一条，日历和年度页数都从这里统计
+ *   meta.wrIgnoredBooks / wrIgnoredNotes: 删除过的微信读书书籍 / 划线编号，再次同步时不会重新加回来
  *   covers: { [bookId]: dataURL }                    // 封面单独存放，避免每次保存都重写图片
  * 日期统一使用本地日期 YYYY-MM-DD，避免 UTC 导致早上 8 点前记到前一天。
  * ======================================================= */
@@ -461,7 +465,7 @@ let covers = {};
 const ui = { calMonth: null, shelfStatus: 'all', shelfCat: '', notesBook: '', kbQuery: '', kbTopic: '', route: 'home', param: '' };
 
 function emptyState() {
-  return { version: SCHEMA, books: [], notes: [], logs: [], meta: { seeded: true, lastExportAt: null, hideA2HS: false } };
+  return { version: SCHEMA, books: [], notes: [], logs: [], meta: { seeded: true, lastExportAt: null, hideA2HS: false, wrIgnoredBooks: [], wrIgnoredNotes: [], lastWereadSync: null } };
 }
 
 let saveChain = Promise.resolve();
@@ -483,8 +487,14 @@ function save(withCovers = false) {
 const bookById = (id) => S.books.find((b) => b.id === id);
 const notesOf = (id) => S.notes.filter((n) => n.bookId === id);
 const logsOf = (id) => S.logs.filter((l) => l.bookId === id);
+const isPct = (b) => b.progressMode === 'percent';
+// 百分比模式下记录过的最高百分比（往回改不会降低它）
+const highWaterPct = (b) => Math.max(b.maxPercent || 0, b.percent || 0);
+const clampPct = (v) => { const s = String(v ?? '').trim(); if (!s) return NaN; const n = Math.round(Number(s)); return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : NaN; };
+const fmtHours = (sec) => (sec >= 3600 ? (sec / 3600).toFixed(1) + ' 小时' : Math.max(1, Math.round(sec / 60)) + ' 分钟');
 function pct(b) {
   if (b.status === 'done') return 100;
+  if (isPct(b)) return Math.min(100, Math.max(0, Math.round(b.percent || 0)));
   if (!b.totalPages) return 0;
   return Math.min(100, Math.round((b.readPages / b.totalPages) * 100));
 }
@@ -510,8 +520,8 @@ function allCategories() {
 }
 function activityMap() {
   const m = {};
-  const get = (k) => (m[k] ||= { pages: 0, logs: [], notes: [] });
-  for (const l of S.logs) { const d = get(l.date); d.pages += l.pages; d.logs.push(l); }
+  const get = (k) => (m[k] ||= { pages: 0, pct: 0, logs: [], notes: [] });
+  for (const l of S.logs) { const d = get(l.date); d.pages += l.pages || 0; d.pct += l.percent || 0; d.logs.push(l); }
   for (const n of S.notes) get(n.date).notes.push(n);
   return m;
 }
@@ -541,7 +551,7 @@ function seedSample() {
     N(b3, -2, { chapter: '第四夜', thought: '“被讨厌的勇气”不是故意惹人讨厌，而是不为了讨好所有人而放弃自己。', action: '这周试着拒绝一件自己并不想做的事。', topics: ['心理', '自由'] }),
   ];
   b1.updatedAt = isoAt(b1.finishedAt);
-  S = { version: SCHEMA, books: [b1, b2, b3, b4], notes, logs, meta: { seeded: true, lastExportAt: null, hideA2HS: false } };
+  S = { version: SCHEMA, books: [b1, b2, b3, b4], notes, logs, meta: emptyState().meta };
 }
 
 /* ---------- 路由 ---------- */
@@ -643,11 +653,12 @@ function calendarHTML() {
     let lv = 0;
     if (a) {
       pages += a.pages; noteCnt += a.notes.length;
-      if (a.pages > 0 || a.notes.length) readDays++;
-      lv = a.pages > 100 ? 4 : a.pages > 50 ? 3 : a.pages > 20 ? 2 : (a.pages > 0 || a.notes.length) ? 1 : 0;
+      if (a.pages > 0 || a.pct > 0 || a.notes.length) readDays++;
+      lv = a.pages > 100 ? 4 : a.pages > 50 ? 3 : a.pages > 20 ? 2 : (a.pages > 0 || a.pct > 0 || a.notes.length) ? 1 : 0;
+      if (a.pct >= 10 && lv < 2) lv = 2;
     }
     const cls = ['cal-day', lv ? 'l' + lv : '', k === t ? 'today' : '', k > t ? 'future' : ''].join(' ');
-    const label = a ? `${d}日，读了${a.pages}页，${a.notes.length}条笔记` : `${d}日，无记录`;
+    const label = a ? `${d}日，读了${a.pages}页${a.pct ? `和${a.pct}%` : ''}，${a.notes.length}条笔记` : `${d}日，无记录`;
     cells += `<button class="${cls}" data-act="cal-day" data-date="${k}" aria-label="${label}">${d}${a && a.notes.length ? '<i class="dot"></i>' : ''}</button>`;
   }
   const now = new Date();
@@ -678,7 +689,7 @@ function bookRowHTML(b, withBtn) {
   const meta = [b.author, b.category].filter(Boolean).join(' · ') || '未填写作者';
   let progLine = '';
   if (b.status === 'done') progLine = `<div class="prog"><span>${b.finishedAt ? fmtDate(b.finishedAt) + ' 读完' : '已读完'}</span></div>`;
-  else if (b.totalPages) progLine = `<div class="prog"><div class="bar"><i style="width:${p}%"></i></div><span>${p}%</span></div>`;
+  else if (isPct(b) || b.totalPages) progLine = `<div class="prog"><div class="bar"><i style="width:${p}%"></i></div><span>${p}%</span></div>`;
   else progLine = `<div class="prog"><span>未填写总页数</span></div>`;
   const btn = withBtn && b.status !== 'done' ? `<button class="mini-btn" data-act="progress" data-id="${b.id}">进度</button>` : '';
   return `<div class="book-row">
@@ -755,7 +766,7 @@ function noteHTML(n, terms = [], showSource = true) {
     ${n.action ? `<div class="sec act"><b>行动建议</b>${hl(n.action, terms)}</div>` : ''}
     ${n.topics && n.topics.length ? `<div class="topics">${n.topics.map((t) => `<span class="tag"># ${hl(t, terms)}</span>`).join('')}</div>` : ''}
     <div class="note-foot">
-      <div class="src">${showSource ? src + ' · ' : ''}${fmtDate(n.date)}</div>
+      <div class="src">${showSource ? src + ' · ' : ''}${fmtDate(n.date)}${n.source === 'weread' ? ' · 微信读书' : ''}</div>
       <div class="ops"><button data-act="edit-note" data-id="${n.id}">编辑</button><button class="del" data-act="del-note" data-id="${n.id}">删除</button></div>
     </div>
   </article>`;
@@ -810,8 +821,13 @@ function viewBook() {
   const p = pct(b);
   const notes = sortNotes(notesOf(b.id));
   const logs = logsOf(b.id).sort((x, y) => (x.date !== y.date ? (x.date < y.date ? 1 : -1) : (x.at < y.at ? 1 : -1)));
-  const logged = logs.reduce((s, l) => s + l.pages, 0);
-  const days = new Set(logs.map((l) => l.date)).size;
+  const pctMode = isPct(b);
+  const logged = logs.reduce((s, l) => s + (pctMode ? l.percent || 0 : l.pages || 0), 0);
+  const days = new Set([...logs.map((l) => l.date), ...notes.map((n) => n.date)]).size;
+  const dates =`${b.startedAt ? ' · ' + fmtDate(b.startedAt, true) + ' 开始' : ''}${b.finishedAt ? ' · ' + fmtDate(b.finishedAt, true) + ' 读完' : ''}`;
+  const progText = pctMode ? `已读 ${b.status === 'done' ? 100 : Math.round(b.percent || 0)}%${dates}` : `已读 ${b.readPages} / ${b.totalPages || '?'} 页${dates}`;
+  const showPct = pctMode || b.totalPages || b.status === 'done';
+  const logText = (l) => (l.percent ? `读了 ${l.percent}%` : `读了 ${l.pages} 页`);
   return `
   <div class="back-row"><button class="icon-btn" data-act="back" aria-label="返回">${ICON.back}</button><span>返回</span></div>
   <section class="hero">
@@ -819,22 +835,22 @@ function viewBook() {
     <div class="info">
       <h1>${esc(b.title)}</h1>
       <div class="meta">${esc(b.author || '未填写作者')}</div>
-      <div class="meta">${b.category ? esc(b.category) + ' · ' : ''}<span class="badge ${b.status}" style="margin-left:0">${STATUS[b.status]}</span></div>
+      <div class="meta">${b.category ? esc(b.category) + ' · ' : ''}<span class="badge ${b.status}" style="margin-left:0">${STATUS[b.status]}</span>${b.source === 'weread' ? '<span class="badge">微信读书</span>' : ''}</div>
       <div class="row"><button class="btn sm" data-act="edit-book" data-id="${b.id}">编辑</button><button class="btn sm ghost text-danger" data-act="del-book" data-id="${b.id}">删除</button></div>
     </div>
   </section>
   <section class="card big-prog">
-    <div class="card-title"><h2>阅读进度</h2>${b.status !== 'done' ? `<button class="mini-btn" data-act="progress" data-id="${b.id}">更新进度</button>` : `<button class="mini-btn" data-act="progress" data-id="${b.id}">修改页数</button>`}</div>
-    <div class="pct">${b.totalPages || b.status === 'done' ? p + '<small style="font-size:16px">%</small>' : '<span style="font-size:18px">未填写总页数</span>'}</div>
+    <div class="card-title"><h2>阅读进度</h2><button class="mini-btn" data-act="progress" data-id="${b.id}">${b.status !== 'done' ? '更新进度' : pctMode ? '修改进度' : '修改页数'}</button></div>
+    <div class="pct">${showPct ? p + '<small style="font-size:16px">%</small>' : '<span style="font-size:18px">未填写总页数</span>'}</div>
     <div class="bar"><i style="width:${p}%"></i></div>
-    <div class="small muted">已读 ${b.readPages} / ${b.totalPages || '?'} 页${b.startedAt ? ' · ' + fmtDate(b.startedAt, true) + ' 开始' : ''}${b.finishedAt ? ' · ' + fmtDate(b.finishedAt, true) + ' 读完' : ''}</div>
-    <div class="kv"><div><b>${days}</b><span>阅读天数</span></div><div><b>${logged}</b><span>记录页数</span></div><div><b>${notes.length}</b><span>笔记</span></div></div>
+    <div class="small muted">${progText}</div>
+    <div class="kv"><div><b>${days}</b><span>阅读天数</span></div>${b.readingSeconds ? `<div><b>${fmtHours(b.readingSeconds)}</b><span>微信读书累计</span></div>` : `<div><b>${logged}${pctMode ? '%' : ''}</b><span>${pctMode ? '记录进度' : '记录页数'}</span></div>`}<div><b>${notes.length}</b><span>笔记</span></div></div>
   </section>
   <section>
     <div class="card-title" style="padding:0 2px"><h2>读书笔记</h2><button class="mini-btn" data-act="add-note" data-book="${b.id}">＋ 记一条</button></div>
     ${notes.length ? notes.map((n) => noteHTML(n, [], false)).join('') : `<div class="card empty"><div class="small">这本书还没有笔记</div></div>`}
   </section>
-  ${logs.length ? `<section class="card"><div class="card-title"><h2>阅读记录</h2></div><ul class="log-list">${logs.slice(0, 30).map((l) => `<li><span>${fmtDate(l.date, true)}</span><span class="muted">读了 ${l.pages} 页</span></li>`).join('')}</ul>${logs.length > 30 ? `<div class="small muted" style="margin-top:8px">仅显示最近 30 条</div>` : ''}</section>` : ''}`;
+  ${logs.length ? `<section class="card"><div class="card-title"><h2>阅读记录</h2></div><ul class="log-list">${logs.slice(0, 30).map((l) => `<li><span>${fmtDate(l.date, true)}</span><span class="muted">${logText(l)}</span></li>`).join('')}</ul>${logs.length > 30 ? `<div class="small muted" style="margin-top:8px">仅显示最近 30 条</div>` : ''}</section>` : ''}`;
 }
 
 /* ---------- 视图：数据与设置 ---------- */
@@ -866,6 +882,16 @@ function viewSettings() {
     <p class="small muted" style="margin-top:-4px">从备份文件恢复，可选择覆盖或合并。导入前会自动保存一份当前数据的快照。</p>
     <div class="btn-row"><button class="btn" data-act="import-file">选择备份文件</button><button class="btn" data-act="import-paste">粘贴文本导入</button></div>
     ${hasBackup ? `<div class="banner" style="margin:12px 0 0"><div class="grow small">有一份 ${esc(ui.backupInfo)} 的快照</div><button data-act="restore-backup">恢复</button></div>` : ''}
+  </section>
+  <section class="card prose">
+    <div class="card-title"><h2>微信读书同步</h2></div>
+    <div class="small muted" style="margin-top:-6px">上次同步：${S.meta.lastWereadSync ? fmtDate(dateKey(new Date(S.meta.lastWereadSync)), true) : '还没有同步过'}</div>
+    <ol>
+      <li>在电脑浏览器登录 weread.qq.com，打开任意一本书进入<b>阅读页</b>；</li>
+      <li>运行同步脚本，点「下载同步文件」；</li>
+      <li>把文件传到手机（AirDrop、微信文件传输助手后「保存到文件」均可），在上方「选择备份文件」里选它。</li>
+    </ol>
+    <div class="small muted">同步会：新增书籍、更新进度和读完状态、补入新的划线。你在这里写的感悟、改过的书名分类都不会被覆盖；删除过的书和划线也不会再被加回来。</div>
   </section>
   <section class="card">
     <div class="card-title"><h2>清理</h2></div>
@@ -997,6 +1023,7 @@ function openBookForm(id) {
   let coverData = b ? covers[b.id] || null : null;
   let coverUrl = b ? b.coverUrl || '' : '';
   const status = b ? b.status : 'reading';
+  const mode = b && isPct(b) ? 'percent' : 'page';
   const cats = [...new Set([...allCategories(), ...DEFAULT_CATS])];
   const previewBook = () => ({ id: '__preview', title: $('#bf-title').value.trim() || '书名', coverUrl });
   const html = `
@@ -1007,11 +1034,16 @@ function openBookForm(id) {
       <div class="field"><label for="bf-cat">分类</label><input id="bf-cat" name="category" list="cat-list" value="${esc(b ? b.category : '')}" placeholder="选择或输入" autocomplete="off"><datalist id="cat-list">${cats.map((c) => `<option value="${esc(c)}">`).join('')}</datalist></div>
     </div>
     <div class="field"><div class="lbl">阅读状态</div><div class="seg">${STATUS_KEYS.map((s) => `<label><input type="radio" name="status" value="${s}" ${s === status ? 'checked' : ''}><span>${STATUS[s]}</span></label>`).join('')}</div></div>
-    <div class="grid2">
+    <div class="field"><div class="lbl">进度记录方式</div><div class="seg two">
+      <label><input type="radio" name="mode" value="page" ${mode === 'page' ? 'checked' : ''}><span>按页码（纸质书）</span></label>
+      <label><input type="radio" name="mode" value="percent" ${mode === 'percent' ? 'checked' : ''}><span>按百分比（电子书）</span></label>
+    </div></div>
+    <div class="grid2" id="bf-page-wrap" ${mode === 'percent' ? 'hidden' : ''}>
       <div class="field"><label for="bf-total">总页数</label><input id="bf-total" name="total" type="number" inputmode="numeric" pattern="[0-9]*" min="0" value="${b && b.totalPages ? b.totalPages : ''}" placeholder="如 320"></div>
       <div class="field"><label for="bf-read">已读到第几页</label><input id="bf-read" name="read" type="number" inputmode="numeric" pattern="[0-9]*" min="0" value="${b && b.readPages ? b.readPages : ''}" placeholder="0"></div>
     </div>
-    <div class="field hint" style="margin-top:-10px">这里填写的页数视为补录，不计入阅读日历。日常阅读请用「更新进度」。</div>
+    <div class="field" id="bf-pct-wrap" ${mode === 'page' ? 'hidden' : ''}><label for="bf-pct">已读百分比（0–100）</label><input id="bf-pct" name="pct" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="100" value="${b && b.percent ? Math.round(b.percent) : ''}" placeholder="0"></div>
+    <div class="field hint" style="margin-top:-10px">这里填写的进度视为补录，不计入阅读日历。日常阅读请用「更新进度」。</div>
     <div class="field" id="bf-fin-wrap" ${status === 'done' ? '' : 'hidden'}><label for="bf-fin">读完日期</label><input id="bf-fin" name="finishedAt" type="date" max="${today()}" value="${b && b.finishedAt ? b.finishedAt : today()}"></div>
     <div class="field"><div class="lbl">封面</div>
       <div class="cover-edit"><div id="bf-cover"></div>
@@ -1037,6 +1069,11 @@ function openBookForm(id) {
     refresh();
     $('#bf-title', root).addEventListener('input', refresh);
     $$('input[name=status]', root).forEach((r) => r.addEventListener('change', () => { $('#bf-fin-wrap', root).hidden = fe.status.value !== 'done'; }));
+    $$('input[name=mode]', root).forEach((r) => r.addEventListener('change', () => {
+      const pctMode = fe.mode.value === 'percent';
+      $('#bf-page-wrap', root).hidden = pctMode;
+      $('#bf-pct-wrap', root).hidden = !pctMode;
+    }));
     $('#bf-pick', root).addEventListener('click', async () => {
       const file = await pickImage();
       if (!file) return;
@@ -1064,16 +1101,21 @@ function openBookForm(id) {
       let fin = st === 'done' ? (isDateKey(fe.finishedAt.value) ? fe.finishedAt.value : today()) : null;
       if (fin && fin > today()) fin = today();
       const t = nowISO();
-      const data = { title, author: fe.author.value.trim(), category: fe.category.value.trim(), status: st, totalPages: total, readPages: read, finishedAt: fin, coverUrl, updatedAt: t };
+      const pm = fe.mode.value === 'percent' ? 'percent' : 'page';
+      let pv = clampPct(fe.pct.value);
+      if (Number.isNaN(pv)) pv = 0;
+      if (st === 'done' && pm === 'percent') pv = 100;
+      const data = { title, author: fe.author.value.trim(), category: fe.category.value.trim(), status: st, totalPages: total, readPages: read, progressMode: pm, percent: pv, finishedAt: fin, coverUrl, updatedAt: t };
       let target;
       if (b) {
         data.maxPage = Math.max(highWater(b), read);
+        data.maxPercent = Math.max(highWaterPct(b), pv);
         Object.assign(b, data);
         if (!b.startedAt && (st === 'reading' || st === 'done')) b.startedAt = st === 'done' ? fin : today();
         delete b.sample;
         target = b;
       } else {
-        target = { id: uid(), createdAt: t, startedAt: st === 'reading' ? today() : st === 'done' ? fin : null, maxPage: read, ...data };
+        target = { id: uid(), createdAt: t, startedAt: st === 'reading' ? today() : st === 'done' ? fin : null, maxPage: read, maxPercent: pv, ...data };
         S.books.push(target);
       }
       if (coverData) covers[target.id] = coverData; else delete covers[target.id];
@@ -1090,7 +1132,9 @@ async function deleteBook(id) {
   if (!b) return;
   const n = notesOf(id).length, l = logsOf(id).length;
   const extra = n || l ? `<br>将同时删除这本书的 <b>${n}</b> 条笔记和 <b>${l}</b> 条阅读记录，日历和统计会相应减少。` : '';
-  if (!(await confirmBox('删除这本书？', `《${esc(b.title)}》删除后无法恢复。${extra}`, '删除', true))) return;
+  const wrTip = b.wereadId ? '<br>这本书来自微信读书，以后同步也不会再加回来。' : '';
+  if (!(await confirmBox('删除这本书？', `《${esc(b.title)}》删除后无法恢复。${extra}${wrTip}`, '删除', true))) return;
+  if (b.wereadId) S.meta.wrIgnoredBooks = [...new Set([...(S.meta.wrIgnoredBooks || []), b.wereadId])];
   S.books = S.books.filter((x) => x.id !== id);
   S.notes = S.notes.filter((x) => x.bookId !== id);
   S.logs = S.logs.filter((x) => x.bookId !== id);
@@ -1106,7 +1150,7 @@ function pickProgress() {
   const list = S.books.filter((b) => b.status === 'reading').sort(byRecent);
   const others = S.books.filter((b) => b.status === 'want' || b.status === 'paused').sort(byRecent);
   if (list.length === 1 && !others.length) { openProgress(list[0].id); return; }
-  const row = (b) => `<button data-act="progress" data-id="${b.id}">${coverHTML(b, 'sm')}<div style="flex:1;min-width:0"><div class="book-title" style="font-size:16px">${esc(b.title)}</div><div class="small muted">${b.totalPages ? `已读 ${b.readPages}/${b.totalPages} 页 · ${pct(b)}%` : STATUS[b.status]}</div></div></button>`;
+  const row = (b) => `<button data-act="progress" data-id="${b.id}">${coverHTML(b, 'sm')}<div style="flex:1;min-width:0"><div class="book-title" style="font-size:16px">${esc(b.title)}</div><div class="small muted">${isPct(b) ? `已读 ${pct(b)}%` : b.totalPages ? `已读 ${b.readPages}/${b.totalPages} 页 · ${pct(b)}%` : STATUS[b.status]}</div></div></button>`;
   let html = '';
   if (list.length) html += `<div class="small muted">在读</div><div class="pick-list">${list.map(row).join('')}</div>`;
   if (others.length) html += `<div class="small muted" style="margin-top:12px">想读 / 搁置（记录进度后会变为在读）</div><div class="pick-list">${others.map(row).join('')}</div>`;
@@ -1114,9 +1158,58 @@ function pickProgress() {
   openSheet('选择要更新的书', html);
 }
 
+// 电子书：按百分比更新进度
+function openProgressPct(b) {
+  const t = today();
+  const cur = Math.round(b.percent || 0);
+  const html = `
+  <form id="prog-form" novalidate>
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px">${coverHTML(b, 'sm')}<div style="min-width:0"><div class="book-title">${esc(b.title)}</div><div class="small muted">当前已读 ${cur}%</div></div></div>
+    <div class="field"><label for="pf-pct">今天读到百分之几</label><input id="pf-pct" name="pct" type="number" inputmode="numeric" pattern="[0-9]*" min="0" max="100" value="${cur || ''}" placeholder="${cur}"></div>
+    <div class="quick-add"><button type="button" class="btn sm" data-add="5">+5%</button><button type="button" class="btn sm" data-add="10">+10%</button><button type="button" class="btn sm" data-add="20">+20%</button><button type="button" class="btn sm" data-add="all">读完</button></div>
+    <div class="field"><label for="pf-date">阅读日期</label><input id="pf-date" name="date" type="date" max="${t}" value="${t}"><div class="hint">只有进度增加时才会计入阅读日历。电子书没有页码，不计入年度阅读页数。</div></div>
+    <button class="btn primary block" type="submit">保存进度</button>
+  </form>`;
+  openSheet('更新阅读进度', html, (root) => {
+    const form = $('#prog-form', root);
+    const fe = form.elements;
+    $$('[data-add]', root).forEach((btn) => btn.addEventListener('click', () => {
+      if (btn.dataset.add === 'all') { fe.pct.value = 100; return; }
+      const v = clampPct(fe.pct.value);
+      fe.pct.value = Math.min(100, (Number.isNaN(v) ? cur : v) + parseInt(btn.dataset.add, 10));
+    }));
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const v = clampPct(fe.pct.value);
+      if (Number.isNaN(v)) { toast('请输入 0–100 之间的数字'); fe.pct.focus(); return; }
+      const date = isDateKey(fe.date.value) ? fe.date.value : t;
+      if (date > today()) { toast('不能记录未来的日期'); return; }
+      const base = highWaterPct(b);
+      const delta = v - base;
+      const forward = v > (b.percent || 0);
+      b.percent = v;
+      b.maxPercent = Math.max(base, v);
+      b.updatedAt = nowISO();
+      delete b.sample;
+      let msg = delta > 0 ? `已记录：读了 ${delta}%` : forward ? '进度已更新（这部分之前已记过，不重复计入日历）' : '进度已修改（未增加，不计入日历）';
+      if (delta > 0) {
+        S.logs.push({ id: uid(), bookId: b.id, date, pages: 0, percent: delta, at: nowISO() });
+        if (!b.startedAt || date < b.startedAt) b.startedAt = date;
+      }
+      if (forward && (b.status === 'want' || b.status === 'paused')) b.status = 'reading';
+      if (v >= 100 && b.status !== 'done') { b.status = 'done'; b.finishedAt = date; msg = `恭喜读完《${b.title}》！`; }
+      save();
+      closeSheet();
+      toast(msg);
+      render();
+    });
+  });
+}
+
 function openProgress(id) {
   const b = bookById(id);
   if (!b) return;
+  if (isPct(b)) { openProgressPct(b); return; }
   const t = today();
   const html = `
   <form id="prog-form" novalidate>
@@ -1276,6 +1369,7 @@ async function deleteNote(id) {
   if (!n) return;
   const preview = esc((n.excerpt || n.thought || n.action).slice(0, 40));
   if (!(await confirmBox('删除这条笔记？', `「${preview}${(n.excerpt || n.thought || n.action).length > 40 ? '…' : ''}」<br>删除后无法恢复。`, '删除', true))) return;
+  if (n.wereadId) S.meta.wrIgnoredNotes = [...new Set([...(S.meta.wrIgnoredNotes || []), n.wereadId])];
   S.notes = S.notes.filter((x) => x.id !== id);
   save();
   toast('已删除');
@@ -1286,18 +1380,22 @@ async function deleteNote(id) {
 function openDay(k) {
   const a = activityMap()[k];
   const title = fmtDate(k, true);
-  if (!a || (!a.pages && !a.notes.length)) {
+  if (!a || (!a.pages && !a.pct && !a.notes.length)) {
     openSheet(title, `<div class="empty"><div class="small">${k > today() ? '这一天还没到' : '这一天没有阅读记录'}</div>${k <= today() ? `<button class="btn primary" data-act="pick-progress">记录阅读进度</button>` : ''}</div>`);
     return;
   }
   const per = {};
-  for (const l of a.logs) per[l.bookId] = (per[l.bookId] || 0) + l.pages;
-  const rows = Object.entries(per).map(([bid, p]) => {
+  for (const l of a.logs) {
+    const x = (per[l.bookId] ||= { pages: 0, pct: 0 });
+    x.pages += l.pages || 0; x.pct += l.percent || 0;
+  }
+  const rows = Object.entries(per).map(([bid, x]) => {
     const b = bookById(bid);
-    return `<li><span>《${esc(b ? b.title : '已删除的书')}》</span><span class="muted">${p} 页</span></li>`;
+    return `<li><span>《${esc(b ? b.title : '已删除的书')}》</span><span class="muted">${[x.pages ? x.pages + ' 页' : '', x.pct ? x.pct + '%' : ''].filter(Boolean).join(' · ')}</span></li>`;
   }).join('');
+  const head = [a.pages ? `${a.pages} 页` : '', a.pct ? `电子书 ${a.pct}%` : ''].filter(Boolean).join(' · ');
   openSheet(title, `
-    ${a.pages ? `<div class="card-title"><h2>读了 ${a.pages} 页</h2></div><ul class="log-list" style="margin-bottom:16px">${rows}</ul>` : ''}
+    ${a.logs.length ? `<div class="card-title"><h2>读了 ${head}</h2></div><ul class="log-list" style="margin-bottom:16px">${rows}</ul>` : ''}
     ${a.notes.length ? `<div class="card-title"><h2>${a.notes.length} 条笔记</h2></div>${sortNotes(a.notes.slice()).map((n) => noteHTML(n)).join('')}` : ''}`);
 }
 
@@ -1348,27 +1446,121 @@ function sanitize(d, inCovers) {
   const books = (Array.isArray(d.books) ? d.books : []).filter((b) => b && typeof b.id === 'string' && str(b.title).trim()).map((b) => ({
     id: b.id, title: str(b.title, 200).trim(), author: str(b.author, 200), category: str(b.category, 50),
     status: STATUS[b.status] ? b.status : 'want', totalPages: posInt(b.totalPages), readPages: Math.min(posInt(b.readPages), posInt(b.totalPages) || Infinity), maxPage: posInt(b.maxPage),
+    progressMode: b.progressMode === 'percent' ? 'percent' : 'page', percent: clampPct(b.percent) || 0, maxPercent: clampPct(b.maxPercent) || 0,
     startedAt: isDateKey(b.startedAt) ? b.startedAt : null, finishedAt: isDateKey(b.finishedAt) ? b.finishedAt : null,
     coverUrl: /^https?:\/\//i.test(b.coverUrl || '') ? str(b.coverUrl, 2000) : '',
     createdAt: str(b.createdAt, 40) || nowISO(), updatedAt: str(b.updatedAt, 40) || nowISO(), ...(b.sample ? { sample: true } : {}),
+    ...(typeof b.wereadId === 'string' && b.wereadId ? { wereadId: str(b.wereadId, 100), source: 'weread', readingSeconds: posInt(b.readingSeconds) } : {}),
   }));
   const ids = new Set(books.map((b) => b.id));
   const notes = (Array.isArray(d.notes) ? d.notes : []).filter((n) => n && typeof n.id === 'string' && ids.has(n.bookId)).map((n) => ({
     id: n.id, bookId: n.bookId, chapter: str(n.chapter, 200), excerpt: str(n.excerpt), thought: str(n.thought), action: str(n.action),
     topics: (Array.isArray(n.topics) ? n.topics : []).filter((t) => typeof t === 'string' && t.trim()).map((t) => t.trim().slice(0, 20)),
     date: isDateKey(n.date) ? n.date : today(), createdAt: str(n.createdAt, 40) || nowISO(), updatedAt: str(n.updatedAt, 40) || nowISO(), ...(n.sample ? { sample: true } : {}),
+    ...(typeof n.wereadId === 'string' && n.wereadId ? { wereadId: str(n.wereadId, 100), source: 'weread' } : {}),
   })).filter((n) => n.excerpt || n.thought || n.action);
-  const logs = (Array.isArray(d.logs) ? d.logs : []).filter((l) => l && typeof l.id === 'string' && ids.has(l.bookId) && isDateKey(l.date) && posInt(l.pages)).map((l) => ({
-    id: l.id, bookId: l.bookId, date: l.date, pages: posInt(l.pages), at: str(l.at, 40) || isoAt(l.date), ...(l.sample ? { sample: true } : {}),
+  const logs = (Array.isArray(d.logs) ? d.logs : []).filter((l) => l && typeof l.id === 'string' && ids.has(l.bookId) && isDateKey(l.date) && (posInt(l.pages) || posInt(l.percent))).map((l) => ({
+    id: l.id, bookId: l.bookId, date: l.date, pages: posInt(l.pages), ...(posInt(l.percent) ? { percent: Math.min(100, posInt(l.percent)) } : {}),
+    at: str(l.at, 40) || isoAt(l.date), ...(l.sample ? { sample: true } : {}),
   }));
   const cv = {};
   for (const [k, v] of Object.entries(inCovers || {})) if (ids.has(k) && typeof v === 'string' && v.startsWith('data:image/')) cv[k] = v;
-  return { books, notes, logs, covers: cv, lastExportAt: d.meta && typeof d.meta.lastExportAt === 'string' ? d.meta.lastExportAt : null };
+  const strList = (a) => (Array.isArray(a) ? a.filter((x) => typeof x === 'string').slice(0, 20000) : []);
+  const m = d.meta || {};
+  return {
+    books, notes, logs, covers: cv,
+    lastExportAt: typeof m.lastExportAt === 'string' ? m.lastExportAt : null,
+    wrIgnoredBooks: strList(m.wrIgnoredBooks), wrIgnoredNotes: strList(m.wrIgnoredNotes),
+    lastWereadSync: typeof m.lastWereadSync === 'string' ? m.lastWereadSync : null,
+  };
+}
+
+/* ---------- 微信读书同步文件导入 ----------
+ * 同步文件由 tools/weread-sync.js 在电脑上生成：{ app, kind: 'weread-sync', books[], highlights[] }
+ * 规则：按微信读书编号对应；已有的书只更新进度/状态/累计时长，不改书名、分类、封面和你写的笔记；
+ *       划线只新增不覆盖；删除过的书和划线不会再加回来；同步不生成阅读记录（日历只显示划线的真实日期）。 */
+async function handleWereadSync(obj) {
+  const str = (v, max = 500) => (typeof v === 'string' ? v.slice(0, max) : '');
+  const isoOk = (v) => typeof v === 'string' && !isNaN(Date.parse(v));
+  const inBooks = (Array.isArray(obj.books) ? obj.books : []).filter((b) => b && typeof b.wereadId === 'string' && b.wereadId && str(b.title).trim());
+  const inHls = (Array.isArray(obj.highlights) ? obj.highlights : []).filter((h) => h && typeof h.wereadId === 'string' && typeof h.bookWereadId === 'string' && str(h.text, 5000).trim());
+  if (!inBooks.length) { toast('同步文件里没有书籍'); return; }
+  const ignoredB = new Set(S.meta.wrIgnoredBooks || []);
+  const ignoredN = new Set(S.meta.wrIgnoredNotes || []);
+  const normTitle = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
+
+  const adds = [], updates = [], links = [];
+  let skippedBooks = 0;
+  for (const ib of inBooks) {
+    if (ignoredB.has(ib.wereadId)) { skippedBooks++; continue; }
+    const byId = S.books.find((x) => x.wereadId === ib.wereadId);
+    if (byId) { updates.push([byId, ib]); continue; }
+    const byTitle = S.books.find((x) => !x.wereadId && !x.sample && normTitle(x.title) === normTitle(ib.title));
+    if (byTitle) links.push([byTitle, ib]); else adds.push(ib);
+  }
+  const haveNotes = new Set(S.notes.filter((n) => n.wereadId).map((n) => n.wereadId));
+  const newHls = inHls.filter((h) => !haveNotes.has(h.wereadId) && !ignoredN.has(h.wereadId) && !ignoredB.has(h.bookWereadId));
+  const skippedHls = inHls.length - newHls.length;
+
+  const when = isoOk(obj.exportedAt) ? fmtDate(dateKey(new Date(obj.exportedAt)), true) : '未知时间';
+  const msg = `同步文件生成于 ${when}<br>新增 <b>${adds.length}</b> 本书，更新 <b>${updates.length + links.length}</b> 本` +
+    (links.length ? `（其中 ${links.length} 本与书架上的同名书关联）` : '') +
+    `<br>新增 <b>${newHls.length}</b> 条划线` + (skippedHls ? `，${skippedHls} 条已存在或删除过，跳过` : '') +
+    (skippedBooks ? `<br>${skippedBooks} 本书你删除过，跳过` : '') +
+    '<br><br>你在工作台里写的感悟、改过的书名和分类不会被覆盖。同步前会自动保存快照。';
+  if (!(await confirmBox('微信读书同步', msg, '开始同步'))) return;
+  await snapshot('同步前');
+
+  const t = nowISO();
+  const later = (a, b) => (isoOk(b) && (!a || b > a) ? b : a);
+  const pctOf = (ib) => (ib.finished ? 100 : (Number.isNaN(clampPct(ib.progress)) ? 0 : clampPct(ib.progress)));
+  const coverOf = (ib) => (/^https?:\/\//i.test(ib.cover || '') ? str(ib.cover, 2000) : '');
+  const updateFrom = (b, ib) => {
+    b.wereadId = ib.wereadId;
+    b.source = 'weread';
+    b.readingSeconds = posInt(ib.readingSeconds);
+    if (isPct(b)) { const p = pctOf(ib); b.percent = p; b.maxPercent = Math.max(b.maxPercent || 0, p); }
+    if (ib.finished && b.status !== 'done') { b.status = 'done'; b.finishedAt = isDateKey(ib.finishDate) ? ib.finishDate : null; }
+    else if (!ib.finished && (b.status === 'want' || b.status === 'paused') && pctOf(ib) > 0) b.status = 'reading';
+    if (!b.startedAt && isDateKey(ib.startDate)) b.startedAt = ib.startDate;
+    if (!b.coverUrl && !covers[b.id] && coverOf(ib)) b.coverUrl = coverOf(ib);
+    b.updatedAt = later(b.updatedAt, ib.lastReadAt);
+    delete b.sample;
+  };
+  for (const [b, ib] of [...updates, ...links]) updateFrom(b, ib);
+  for (const ib of adds) {
+    const p = pctOf(ib);
+    S.books.push({
+      id: uid(), title: str(ib.title, 200).trim(), author: str(ib.author, 200), category: str(ib.category, 50),
+      status: ib.finished ? 'done' : p > 0 ? 'reading' : 'want',
+      totalPages: 0, readPages: 0, maxPage: 0, progressMode: 'percent', percent: p, maxPercent: p,
+      startedAt: isDateKey(ib.startDate) ? ib.startDate : null,
+      finishedAt: ib.finished && isDateKey(ib.finishDate) ? ib.finishDate : null,
+      coverUrl: coverOf(ib), wereadId: ib.wereadId, source: 'weread', readingSeconds: posInt(ib.readingSeconds),
+      createdAt: t, updatedAt: isoOk(ib.lastReadAt) ? ib.lastReadAt : t,
+    });
+  }
+  const localId = new Map(S.books.filter((b) => b.wereadId).map((b) => [b.wereadId, b.id]));
+  let added = 0;
+  for (const h of newHls) {
+    const bookId = localId.get(h.bookWereadId);
+    if (!bookId) continue;
+    const date = isDateKey(h.date) && h.date <= today() ? h.date : today();
+    const at = isoOk(h.createdAt) ? h.createdAt : isoAt(date);
+    S.notes.push({ id: uid(), bookId, chapter: str(h.chapter, 200), excerpt: str(h.text, 5000).trim(), thought: '', action: '', topics: [], date, createdAt: at, updatedAt: at, source: 'weread', wereadId: h.wereadId });
+    added++;
+  }
+  S.meta.lastWereadSync = t;
+  await save();
+  toast(`同步完成：新增 ${adds.length} 本书、${added} 条划线`);
+  closeSheet();
+  go('home');
 }
 
 async function handleImport(text) {
   let obj;
   try { obj = JSON.parse(text); } catch (e) { toast('文件内容不是有效的备份（JSON 解析失败）'); return; }
+  if (obj && obj.app === APP_ID && obj.kind === 'weread-sync') { await handleWereadSync(obj); return; }
   if (!obj || obj.app !== APP_ID || !obj.data || !Array.isArray(obj.data.books)) { toast('这不是「我的阅读空间」的备份文件'); return; }
   if (obj.version > SCHEMA) { toast('备份来自更新的版本，请先更新本页面'); return; }
   const inc = sanitize(obj.data, obj.covers);
@@ -1382,7 +1574,7 @@ async function handleImport(text) {
   if (!mode) return;
   await snapshot('导入前');
   if (mode === 'replace') {
-    S = { version: SCHEMA, books: inc.books, notes: inc.notes, logs: inc.logs, meta: { ...S.meta, seeded: true, lastExportAt: inc.lastExportAt || S.meta.lastExportAt } };
+    S = { version: SCHEMA, books: inc.books, notes: inc.notes, logs: inc.logs, meta: { ...S.meta, seeded: true, lastExportAt: inc.lastExportAt || S.meta.lastExportAt, wrIgnoredBooks: inc.wrIgnoredBooks, wrIgnoredNotes: inc.wrIgnoredNotes, lastWereadSync: inc.lastWereadSync || S.meta.lastWereadSync } };
     covers = inc.covers;
   } else {
     const mergeBy = (cur, add, useTime) => {
