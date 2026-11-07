@@ -1,0 +1,1555 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>我的阅读空间</title>
+<meta name="description" content="个人读书工作台：书架、阅读进度、读书笔记与知识库，数据保存在本机。">
+<meta name="theme-color" content="#F5F1E8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1B1D1A" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="阅读空间">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+:root {
+  --bg: #F5F1E8;
+  --surface: #FFFDF8;
+  --surface-2: #EFE9DC;
+  --text: #2A2924;
+  --muted: #857F72;
+  --line: #E6DFCF;
+  --primary: #2F5241;
+  --primary-ink: #FFFDF8;
+  --primary-soft: #E3EBE4;
+  --accent: #A8844E;
+  --accent-soft: rgba(168, 132, 78, .22);
+  --danger: #A6473B;
+  --heat0: #EFE9DC;
+  --heat1: #D9E5DA;
+  --heat2: #A9C6AE;
+  --heat3: #6F9A7A;
+  --heat4: #2F5241;
+  --shadow: 0 1px 2px rgba(60, 50, 30, .05), 0 6px 18px rgba(60, 50, 30, .06);
+  --serif: "Songti SC", "STSong", "Noto Serif SC", "Noto Serif CJK SC", "Source Han Serif SC", "SimSun", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1B1D1A;
+    --surface: #242723;
+    --surface-2: #2E322D;
+    --text: #E9E5DA;
+    --muted: #9C978B;
+    --line: #373B35;
+    --primary: #8DB59A;
+    --primary-ink: #16201A;
+    --primary-soft: #2B3A30;
+    --accent: #C9A66B;
+    --accent-soft: rgba(201, 166, 107, .25);
+    --danger: #D9776A;
+    --heat0: #2E322D;
+    --heat1: #33463A;
+    --heat2: #47684F;
+    --heat3: #66906F;
+    --heat4: #8DB59A;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .25);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: var(--sans); font-size: 15px; line-height: 1.55;
+  -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+[hidden] { display: none !important; }
+svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+#app {
+  max-width: 560px; margin: 0 auto;
+  padding: calc(var(--safe-t) + 14px) 16px calc(96px + var(--safe-b));
+  min-height: 100dvh;
+}
+
+/* ---------- 页面头部 ---------- */
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 6px 0 18px; }
+.page-head h1 { font-family: var(--serif); font-size: 27px; font-weight: 700; margin: 0; letter-spacing: .04em; }
+.page-head .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.icon-btn {
+  width: 44px; height: 44px; border-radius: 50%; border: 0; background: transparent;
+  display: inline-flex; align-items: center; justify-content: center; color: var(--muted); flex: none;
+}
+.icon-btn:active { background: var(--surface-2); }
+.back-row { display: flex; align-items: center; gap: 4px; margin: 0 0 8px -10px; }
+.back-row span { color: var(--muted); font-size: 14px; }
+
+/* ---------- 卡片与通用 ---------- */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.card-title { display: flex; align-items: center; justify-content: space-between; margin: 0 0 12px; }
+.card-title h2 { font-family: var(--serif); font-size: 18px; margin: 0; font-weight: 700; }
+.card-title .more { color: var(--muted); font-size: 13px; padding: 6px 0 6px 10px; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.serif { font-family: var(--serif); }
+
+.banner {
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px;
+  background: var(--primary-soft); color: var(--text); font-size: 14px; margin-bottom: 14px;
+}
+.banner.warn { background: var(--accent-soft); }
+.banner .grow { flex: 1; }
+.banner button { border: 0; background: transparent; color: var(--primary); font-weight: 600; padding: 6px 4px; white-space: nowrap; }
+.banner.warn button { color: var(--accent); }
+
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow); }
+.stat .num { font-family: var(--serif); font-size: 30px; font-weight: 700; color: var(--primary); line-height: 1.15; }
+.stat .num small { font-size: 13px; color: var(--muted); font-weight: 400; margin-left: 3px; font-family: var(--sans); }
+.stat .lbl { color: var(--muted); font-size: 13px; }
+
+.quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.quick button {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 14px; min-height: 64px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  font-size: 13px; color: var(--text); box-shadow: var(--shadow);
+}
+.quick button svg { color: var(--primary); }
+.quick button:active { transform: scale(.97); }
+
+/* ---------- 日历 ---------- */
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.cal-head h2 { font-family: var(--serif); font-size: 18px; margin: 0; }
+.cal-nav { display: flex; align-items: center; }
+.cal-nav .m { font-size: 14px; min-width: 88px; text-align: center; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.cal-wd { text-align: center; font-size: 12px; color: var(--muted); padding: 2px 0 4px; }
+.cal-day {
+  position: relative; aspect-ratio: 1; border: 0; border-radius: 9px; background: var(--heat0);
+  font-size: 13px; display: flex; align-items: center; justify-content: center; padding: 0; color: var(--text);
+}
+.cal-day.l1 { background: var(--heat1); }
+.cal-day.l2 { background: var(--heat2); }
+.cal-day.l3 { background: var(--heat3); color: #fff; }
+.cal-day.l4 { background: var(--heat4); color: var(--primary-ink); }
+.cal-day.today { box-shadow: inset 0 0 0 2px var(--accent); }
+.cal-day.future { opacity: .4; }
+.cal-day.blank { background: transparent; }
+.cal-day .dot { position: absolute; bottom: 4px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--accent); }
+.cal-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.legend { display: flex; align-items: center; gap: 3px; }
+.legend i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+.legend .ldot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin: 0 2px 0 8px; }
+
+/* ---------- 书籍 ---------- */
+.cover { position: relative; flex: none; border-radius: 4px 6px 6px 4px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,.15), inset 3px 0 0 rgba(0,0,0,.08); background: var(--surface-2); }
+.cover.sm { width: 40px; height: 56px; }
+.cover.md { width: 58px; height: 82px; }
+.cover.lg { width: 104px; height: 148px; }
+.cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+.gen-cover {
+  position: absolute; inset: 0; background: linear-gradient(160deg, rgba(255,255,255,.10), rgba(0,0,0,.12)), var(--c);
+  color: #F3EBD9; font-family: var(--serif); display: flex; justify-content: center; padding: 8% 0;
+}
+.gen-cover::before { content: ""; position: absolute; left: 7%; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,.18); }
+.gen-cover span { writing-mode: vertical-rl; white-space: nowrap; text-overflow: ellipsis; letter-spacing: .12em; overflow: hidden; max-height: 100%; line-height: 1.1; font-weight: 700; }
+.cover.sm .gen-cover span { font-size: 9px; }
+.cover.md .gen-cover span { font-size: 12px; }
+.cover.lg .gen-cover span { font-size: 18px; }
+
+.book-list { display: flex; flex-direction: column; }
+.book-row { display: flex; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.book-row:last-child { border-bottom: 0; }
+.book-row .info { flex: 1; min-width: 0; }
+.book-title { font-family: var(--serif); font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.book-meta { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prog { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; color: var(--muted); }
+.bar { flex: 1; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--primary); border-radius: 3px; transition: width .3s; }
+.badge { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--surface-2); color: var(--muted); margin-left: 6px; vertical-align: 2px; font-family: var(--sans); font-weight: 400; }
+.badge.reading { background: var(--primary-soft); color: var(--primary); }
+.badge.done { background: var(--accent-soft); color: var(--accent); }
+.mini-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 18px; padding: 0 12px; height: 34px; font-size: 13px; color: var(--primary); flex: none; }
+.mini-btn:active { background: var(--surface-2); }
+
+/* ---------- 筛选条 ---------- */
+.chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 16px 10px; margin: 0 -16px 4px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 18px;
+  padding: 0 14px; height: 36px; font-size: 14px; white-space: nowrap; color: var(--text);
+}
+.chip.on { background: var(--primary); border-color: var(--primary); color: var(--primary-ink); }
+.chip em { font-style: normal; opacity: .65; margin-left: 4px; font-size: 12px; }
+
+.search { position: relative; margin-bottom: 12px; }
+.search input { padding-left: 40px !important; }
+.search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); width: 20px; height: 20px; }
+
+/* ---------- 笔记 ---------- */
+.note { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+.note .chapter { font-size: 12px; color: var(--accent); margin-bottom: 8px; letter-spacing: .05em; }
+.note blockquote { margin: 0 0 10px; padding: 2px 0 2px 12px; border-left: 3px solid var(--accent); font-family: var(--serif); font-size: 16px; line-height: 1.85; white-space: pre-wrap; }
+.note .sec { margin-top: 8px; white-space: pre-wrap; }
+.note .sec b { display: block; font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 2px; }
+.note .sec.act { background: var(--primary-soft); border-radius: 10px; padding: 8px 10px; }
+.note .sec.act b { color: var(--primary); }
+.note .topics { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.tag { font-size: 12px; padding: 2px 9px; border-radius: 10px; background: var(--surface-2); color: var(--muted); }
+.note-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 13px; color: var(--muted); }
+.note-foot .src { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note-foot .src a { color: var(--primary); }
+.note-foot .ops { display: flex; gap: 2px; flex: none; }
+.note-foot .ops button { border: 0; background: transparent; color: var(--muted); padding: 8px 8px; font-size: 13px; }
+.note-foot .ops button.del { color: var(--danger); }
+mark { background: var(--accent-soft); color: inherit; border-radius: 3px; padding: 0 1px; }
+
+.empty { text-align: center; padding: 36px 16px; color: var(--muted); }
+.empty .t { font-family: var(--serif); font-size: 17px; color: var(--text); margin-bottom: 6px; }
+.empty .btn { margin-top: 14px; }
+
+/* ---------- 书籍详情 ---------- */
+.hero { display: flex; gap: 18px; align-items: flex-start; margin-bottom: 16px; }
+.hero .info { flex: 1; min-width: 0; padding-top: 4px; }
+.hero h1 { font-family: var(--serif); font-size: 23px; margin: 0 0 4px; line-height: 1.3; word-break: break-word; }
+.hero .meta { color: var(--muted); font-size: 14px; }
+.hero .row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.big-prog .pct { font-family: var(--serif); font-size: 34px; font-weight: 700; color: var(--primary); line-height: 1; }
+.big-prog .bar { height: 10px; border-radius: 5px; margin: 12px 0 8px; }
+.big-prog .bar > i { border-radius: 5px; }
+.kv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; text-align: center; }
+.kv div { background: var(--bg); border-radius: 10px; padding: 8px 4px; }
+.kv b { display: block; font-family: var(--serif); font-size: 17px; }
+.kv span { font-size: 12px; color: var(--muted); }
+.log-list { list-style: none; padding: 0; margin: 0; font-size: 14px; }
+.log-list li { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.log-list li:last-child { border-bottom: 0; }
+
+/* ---------- 按钮与表单 ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 46px; padding: 0 18px;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-size: 15px; font-weight: 500;
+}
+.btn.primary { background: var(--primary); border-color: var(--primary); color: var(--primary-ink); }
+.btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn.ghost { background: transparent; }
+.btn.text-danger { color: var(--danger); }
+.btn.block { width: 100%; }
+.btn.sm { min-height: 38px; font-size: 14px; padding: 0 14px; border-radius: 10px; }
+.btn:active { opacity: .85; }
+.btn-row { display: flex; gap: 10px; }
+.btn-row > .btn { flex: 1; }
+
+.field { margin-bottom: 14px; }
+.field > label, .field > .lbl { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.field .req { color: var(--danger); }
+.field .hint { font-size: 12px; color: var(--muted); margin-top: 5px; }
+.inp, .field input:not([type=radio]):not([type=file]), .field select, .field textarea {
+  width: 100%; font-size: 16px; padding: 11px 12px; border-radius: 11px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--text); outline: none; min-height: 46px; -webkit-appearance: none; appearance: none;
+}
+.field textarea { min-height: 88px; resize: vertical; line-height: 1.6; }
+.field textarea.serif { font-family: var(--serif); }
+.inp:focus, .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--primary); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.seg label { position: relative; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg span { display: flex; align-items: center; justify-content: center; height: 42px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); font-size: 14px; }
+.seg input:checked + span { background: var(--primary); border-color: var(--primary); color: var(--primary-ink); }
+.cover-edit { display: flex; gap: 14px; align-items: flex-start; }
+.cover-edit .ops { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.quick-add { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: -4px 0 14px; }
+.topic-box { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 8px; border: 1px solid var(--line); border-radius: 11px; background: var(--bg); min-height: 46px; }
+.topic-box input { flex: 1; min-width: 100px; border: 0 !important; background: transparent !important; padding: 6px 4px !important; min-height: 32px !important; }
+.topic-box .t { display: inline-flex; align-items: center; gap: 2px; background: var(--primary-soft); color: var(--primary); border-radius: 14px; padding: 3px 4px 3px 10px; font-size: 14px; }
+.topic-box .t button { border: 0; background: transparent; color: inherit; width: 24px; height: 24px; padding: 0; font-size: 16px; line-height: 1; }
+.sugg { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.sugg button { border: 1px dashed var(--line); background: transparent; border-radius: 14px; padding: 4px 10px; font-size: 13px; color: var(--muted); }
+.pick-list button { width: 100%; display: flex; gap: 12px; align-items: center; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: transparent; padding: 12px 0; }
+.pick-list button:last-child { border-bottom: 0; }
+
+.set-list { list-style: none; margin: 0; padding: 0; }
+.set-list li { padding: 12px 0; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 14px; }
+.set-list li:last-child { border-bottom: 0; }
+.prose { font-size: 14px; line-height: 1.75; }
+.prose ol { padding-left: 20px; margin: 6px 0; }
+.prose h3 { font-family: var(--serif); font-size: 15px; margin: 14px 0 4px; }
+
+/* ---------- 悬浮按钮 / 底栏 ---------- */
+.fab {
+  position: fixed; right: max(16px, calc(50% - 264px)); bottom: calc(78px + var(--safe-b)); z-index: 20;
+  height: 52px; padding: 0 20px 0 16px; border-radius: 26px; border: 0; background: var(--primary); color: var(--primary-ink);
+  display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; box-shadow: 0 6px 18px rgba(47, 82, 65, .35);
+}
+.fab:active { transform: scale(.96); }
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line); padding-bottom: var(--safe-b);
+}
+.tabbar .in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); }
+.tabbar a { height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; color: var(--muted); }
+.tabbar a.on { color: var(--primary); font-weight: 600; }
+.tabbar a.on svg { stroke-width: 2.1; }
+
+/* ---------- 底部弹层 / 对话框 / 提示 ---------- */
+.sheet-mask { position: fixed; inset: 0; background: rgba(20, 18, 12, .38); z-index: 50; opacity: 0; transition: opacity .2s; }
+.sheet-mask.open { opacity: 1; }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 51; max-width: 560px; margin: 0 auto;
+  background: var(--surface); border-radius: 20px 20px 0 0; max-height: 92dvh; display: flex; flex-direction: column;
+  transform: translateY(100%); transition: transform .24s cubic-bezier(.2, .8, .2, 1);
+}
+.sheet.open { transform: translateY(0); }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 4px 18px; border-bottom: 1px solid var(--line); }
+.sheet-head h2 { font-family: var(--serif); font-size: 18px; margin: 0; }
+.sheet-body { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 16px calc(20px + var(--safe-b)); overscroll-behavior: contain; }
+.dialog-mask { position: fixed; inset: 0; z-index: 100; background: rgba(20, 18, 12, .45); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.dialog { background: var(--surface); border-radius: 18px; padding: 20px; width: 100%; max-width: 340px; box-shadow: 0 10px 40px rgba(0, 0, 0, .25); }
+.dialog h3 { font-family: var(--serif); margin: 0 0 8px; font-size: 18px; }
+.dialog p { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.7; }
+.dialog .btns { display: flex; flex-direction: column; gap: 8px; }
+.dialog .btns.two { flex-direction: row-reverse; }
+.dialog .btns.two .btn { flex: 1; }
+#toast {
+  position: fixed; left: 50%; bottom: calc(92px + var(--safe-b)); transform: translate(-50%, 10px); z-index: 200;
+  background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 22px; font-size: 14px;
+  opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; max-width: calc(100% - 32px); text-align: center;
+}
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+<main id="app"><div class="empty">正在打开…</div></main>
+
+<nav class="tabbar" aria-label="主导航">
+  <div class="in">
+    <a href="#/home" data-tab="home"><svg class="i" viewBox="0 0 24 24"><path d="M3.5 10.2 12 3.5l8.5 6.7V19.5a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/></svg><span>首页</span></a>
+    <a href="#/shelf" data-tab="shelf"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="4.5" height="16" rx="1"/><rect x="9.5" y="4" width="4.5" height="16" rx="1"/><path d="m16 5.6 3.6-.9 2.9 14.6-3.6.9z"/></svg><span>书架</span></a>
+    <a href="#/notes" data-tab="notes"><svg class="i" viewBox="0 0 24 24"><path d="M6 3.5h9l4 4v13H6z"/><path d="M14.5 3.5v4.5H19M9 12h7M9 16h5"/></svg><span>笔记</span></a>
+    <a href="#/kb" data-tab="kb"><svg class="i" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/></svg><span>知识库</span></a>
+  </div>
+</nav>
+
+<div id="sheet-mask" class="sheet-mask" hidden data-act="close-sheet"></div>
+<section id="sheet" class="sheet" hidden role="dialog" aria-modal="true">
+  <header class="sheet-head"><h2 id="sheet-title"></h2><button class="icon-btn" data-act="close-sheet" aria-label="关闭"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
+  <div class="sheet-body" id="sheet-body"></div>
+</section>
+<div id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="file-import" accept=".json,application/json,text/plain" hidden>
+<input type="file" id="file-cover" accept="image/*" hidden>
+
+<script>
+'use strict';
+/* =========================================================
+ * 我的阅读空间 —— 纯前端个人读书工作台
+ * 数据结构：
+ *   books: { id, title, author, category, status, totalPages, readPages, maxPage(记录过的最高页数),
+ *            startedAt, finishedAt, coverUrl, createdAt, updatedAt, sample? }
+ *   notes: { id, bookId, chapter, excerpt, thought, action, topics[], date, createdAt, updatedAt, sample? }
+ *   logs : { id, bookId, date, pages, at, sample? }   // 每次进度增加记一条，日历和年度页数都从这里统计
+ *   covers: { [bookId]: dataURL }                    // 封面单独存放，避免每次保存都重写图片
+ * 日期统一使用本地日期 YYYY-MM-DD，避免 UTC 导致早上 8 点前记到前一天。
+ * ======================================================= */
+
+const APP_ID = 'reading-space';
+const SCHEMA = 1;
+const STATUS = { reading: '在读', want: '想读', done: '已读', paused: '搁置' };
+const STATUS_KEYS = ['reading', 'want', 'done', 'paused'];
+const DEFAULT_CATS = ['文学', '历史', '哲学', '心理', '经济', '商业', '科技', '传记', '艺术', '其他'];
+const COVER_COLORS = ['#2F5241', '#5B4636', '#3D4F63', '#7A3E3E', '#4F5D3A', '#6B5B3E', '#3E4A4A', '#5A4A62'];
+const BACKUP_REMIND_DAYS = 14;
+
+/* ---------- 工具函数 ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const pad = (n) => String(n).padStart(2, '0');
+const dateKey = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseKey = (k) => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+const today = () => dateKey(new Date());
+const nowISO = () => new Date().toISOString();
+const addDays = (k, n) => { const d = parseKey(k); d.setDate(d.getDate() + n); return dateKey(d); };
+const isoAt = (k, h = 21) => { const d = parseKey(k); d.setHours(h, 0, 0, 0); return d.toISOString(); };
+const daysBetween = (a, b) => Math.round((parseKey(b) - parseKey(a)) / 86400000);
+const isDateKey = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+const posInt = (v) => { const n = parseInt(String(v ?? '').trim(), 10); return Number.isFinite(n) && n > 0 ? n : 0; };
+function fmtDate(k, withYear) {
+  if (!k) return '';
+  const d = parseKey(k);
+  const showY = withYear || d.getFullYear() !== new Date().getFullYear();
+  return `${showY ? d.getFullYear() + '年' : ''}${d.getMonth() + 1}月${d.getDate()}日`;
+}
+function coverColor(title) {
+  let h = 0;
+  for (const ch of String(title)) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return COVER_COLORS[h % COVER_COLORS.length];
+}
+const ICON = {
+  plus: '<svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  book: '<svg class="i" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></svg>',
+  prog: '<svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>',
+  pen: '<svg class="i" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>',
+  gear: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  back: '<svg class="i" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
+  left: '<svg class="i" viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg>',
+  right: '<svg class="i" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></svg>',
+  search: '<svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>',
+};
+
+/* ---------- 本地存储：优先 IndexedDB，失败退回 localStorage ---------- */
+const kv = (() => {
+  let db = null;
+  let mode = 'memory';
+  const mem = {};
+  const wrap = (r) => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  return {
+    get mode() { return mode; },
+    async init() {
+      try {
+        if (!window.indexedDB) throw new Error('no idb');
+        db = await new Promise((res, rej) => {
+          const r = indexedDB.open('reading-space', 1);
+          r.onupgradeneeded = () => r.result.createObjectStore('kv');
+          r.onsuccess = () => res(r.result);
+          r.onerror = () => rej(r.error);
+          r.onblocked = () => rej(new Error('blocked'));
+        });
+        mode = 'idb';
+        return;
+      } catch (e) { /* 退回 localStorage */ }
+      try { localStorage.setItem('rs:t', '1'); localStorage.removeItem('rs:t'); mode = 'local'; } catch (e) { mode = 'memory'; }
+    },
+    async get(k) {
+      if (mode === 'idb') return wrap(db.transaction('kv').objectStore('kv').get(k));
+      if (mode === 'local') { const v = localStorage.getItem('rs:' + k); return v == null ? undefined : JSON.parse(v); }
+      return mem[k];
+    },
+    async set(k, v) {
+      if (mode === 'idb') {
+        return new Promise((res, rej) => {
+          const tx = db.transaction('kv', 'readwrite');
+          tx.objectStore('kv').put(v, k);
+          tx.oncomplete = () => res();
+          tx.onerror = () => rej(tx.error);
+          tx.onabort = () => rej(tx.error);
+        });
+      }
+      if (mode === 'local') { localStorage.setItem('rs:' + k, JSON.stringify(v)); return; }
+      mem[k] = JSON.parse(JSON.stringify(v));
+    },
+  };
+})();
+
+/* ---------- 应用状态 ---------- */
+let S = emptyState();
+let covers = {};
+const ui = { calMonth: null, shelfStatus: 'all', shelfCat: '', notesBook: '', kbQuery: '', kbTopic: '', route: 'home', param: '' };
+
+function emptyState() {
+  return { version: SCHEMA, books: [], notes: [], logs: [], meta: { seeded: true, lastExportAt: null, hideA2HS: false } };
+}
+
+let saveChain = Promise.resolve();
+function save(withCovers = false) {
+  saveChain = saveChain
+    .then(async () => {
+      await kv.set('state', S);
+      if (withCovers) await kv.set('covers', covers);
+    })
+    .catch((err) => {
+      console.error(err);
+      const full = err && (err.name === 'QuotaExceededError' || /quota/i.test(err.message || ''));
+      toast(full ? '保存失败：存储空间不足，请删除部分封面或导出备份' : '保存失败，请尽快导出备份');
+    });
+  return saveChain;
+}
+
+/* ---------- 数据查询 ---------- */
+const bookById = (id) => S.books.find((b) => b.id === id);
+const notesOf = (id) => S.notes.filter((n) => n.bookId === id);
+const logsOf = (id) => S.logs.filter((l) => l.bookId === id);
+function pct(b) {
+  if (b.status === 'done') return 100;
+  if (!b.totalPages) return 0;
+  return Math.min(100, Math.round((b.readPages / b.totalPages) * 100));
+}
+// 这本书记录过的最高页数（往回改页数不会降低它）
+const highWater = (b) => Math.max(b.maxPage || 0, b.readPages || 0);
+function lastActivity(b) {
+  let t = b.updatedAt || b.createdAt || '';
+  for (const l of S.logs) if (l.bookId === b.id && l.at > t) t = l.at;
+  for (const n of S.notes) if (n.bookId === b.id && n.updatedAt > t) t = n.updatedAt;
+  return t;
+}
+const byRecent = (a, b) => (lastActivity(b) > lastActivity(a) ? 1 : -1);
+const hasSample = () => S.books.some((b) => b.sample) || S.notes.some((n) => n.sample) || S.logs.some((l) => l.sample);
+const realCount = () => S.books.filter((b) => !b.sample).length + S.notes.filter((n) => !n.sample).length;
+function allTopics() {
+  const m = new Map();
+  for (const n of S.notes) for (const t of n.topics || []) m.set(t, (m.get(t) || 0) + 1);
+  return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh'));
+}
+function allCategories() {
+  const set = new Set(S.books.map((b) => b.category).filter(Boolean));
+  return [...set];
+}
+function activityMap() {
+  const m = {};
+  const get = (k) => (m[k] ||= { pages: 0, logs: [], notes: [] });
+  for (const l of S.logs) { const d = get(l.date); d.pages += l.pages; d.logs.push(l); }
+  for (const n of S.notes) get(n.date).notes.push(n);
+  return m;
+}
+
+/* ---------- 示例数据 ---------- */
+function seedSample() {
+  const t = today();
+  const mk = (o) => {
+    const at = isoAt(o.startedAt || addDays(t, -45), 20);
+    return { id: uid(), author: '', category: '', status: 'want', totalPages: 0, readPages: 0, startedAt: null, finishedAt: null, coverUrl: '', createdAt: at, updatedAt: at, sample: true, ...o };
+  };
+  const b1 = mk({ title: '活着', author: '余华', category: '文学', status: 'done', totalPages: 191, readPages: 191, startedAt: addDays(t, -40), finishedAt: addDays(t, -31) });
+  const b2 = mk({ title: '人类简史', author: '尤瓦尔·赫拉利', category: '历史', status: 'reading', totalPages: 440, readPages: 210, startedAt: addDays(t, -22) });
+  const b3 = mk({ title: '被讨厌的勇气', author: '岸见一郎 / 古贺史健', category: '心理', status: 'reading', totalPages: 296, readPages: 96, startedAt: addDays(t, -9) });
+  const b4 = mk({ title: '置身事内', author: '兰小欢', category: '经济', status: 'want', totalPages: 336 });
+  const logs = [];
+  const L = (b, rows) => rows.forEach(([d, p]) => { const date = addDays(t, d); logs.push({ id: uid(), bookId: b.id, date, pages: p, at: isoAt(date), sample: true }); });
+  L(b1, [[-40, 30], [-39, 25], [-37, 40], [-35, 32], [-33, 34], [-31, 30]]);
+  L(b2, [[-22, 24], [-21, 18], [-19, 30], [-17, 22], [-15, 26], [-14, 15], [-12, 20], [-10, 18], [-7, 12], [-5, 25]]);
+  L(b3, [[-9, 20], [-8, 16], [-6, 22], [-4, 18], [-2, 10], [-1, 10]]);
+  const N = (b, d, o) => { const date = addDays(t, d); const at = isoAt(date, 22); return { id: uid(), bookId: b.id, chapter: '', excerpt: '', thought: '', action: '', topics: [], date, createdAt: at, updatedAt: at, sample: true, ...o }; };
+  const notes = [
+    N(b1, -31, { chapter: '中文版自序', excerpt: '人是为活着本身而活着，而不是为了活着之外的任何事物所活着。', thought: '福贵几乎失去了一切，却仍然活下去。活着本身就是意义，不必总向外寻找理由。', action: '少用“有没有意义”去评判日子，先把每一天过好。', topics: ['人生', '苦难'] }),
+    N(b2, -19, { chapter: '第二章 知善恶树', excerpt: '（示例摘录）虚构的故事让大量互不相识的人能够彼此合作。', thought: '公司、国家、货币都建立在“共同想象”之上，理解这一点后，很多社会现象都好解释了。', action: '读新闻时多问一句：背后是哪一种共同想象在起作用？', topics: ['认知', '社会'] }),
+    N(b2, -12, { chapter: '第五章 史上最大骗局', excerpt: '（示例摘录）农业革命让人口总量增加，却未必让个体过得更好。', thought: '进步和幸福并不是一回事。', topics: ['历史', '幸福'] }),
+    N(b3, -6, { chapter: '第二夜', excerpt: '所有的烦恼都来自人际关系。', thought: '很多焦虑其实来自在意别人的评价。分清“这是谁的课题”，能卸下不少包袱。', action: '纠结时先问自己：这是我的课题，还是别人的课题？', topics: ['心理', '人际关系'] }),
+    N(b3, -2, { chapter: '第四夜', thought: '“被讨厌的勇气”不是故意惹人讨厌，而是不为了讨好所有人而放弃自己。', action: '这周试着拒绝一件自己并不想做的事。', topics: ['心理', '自由'] }),
+  ];
+  b1.updatedAt = isoAt(b1.finishedAt);
+  S = { version: SCHEMA, books: [b1, b2, b3, b4], notes, logs, meta: { seeded: true, lastExportAt: null, hideA2HS: false } };
+}
+
+/* ---------- 路由 ---------- */
+function go(path) { if (location.hash !== '#/' + path) location.hash = '#/' + path; else render(); }
+function parseRoute() {
+  const h = decodeURIComponent(location.hash.replace(/^#\/?/, ''));
+  const [r, p = ''] = h.split('/');
+  ui.route = ['home', 'shelf', 'notes', 'kb', 'book', 'settings'].includes(r) ? r : 'home';
+  ui.param = p;
+}
+let navCount = 0;
+window.addEventListener('hashchange', () => { navCount++; closeSheet(); parseRoute(); render(); window.scrollTo(0, 0); });
+
+function render() {
+  const app = $('#app');
+  const views = { home: viewHome, shelf: viewShelf, notes: viewNotes, kb: viewKB, book: viewBook, settings: viewSettings };
+  app.innerHTML = views[ui.route]();
+  const tab = { book: 'shelf', settings: 'home' }[ui.route] || ui.route;
+  $$('.tabbar a').forEach((a) => a.classList.toggle('on', a.dataset.tab === tab));
+  if (ui.route === 'kb') bindKB();
+  if (ui.route === 'settings') fillSettingsInfo();
+}
+
+/* ---------- 视图：首页 ---------- */
+function greeting() {
+  const h = new Date().getHours();
+  return h < 5 ? '夜深了' : h < 11 ? '早上好' : h < 13 ? '中午好' : h < 18 ? '下午好' : '晚上好';
+}
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+function viewHome() {
+  const y = String(new Date().getFullYear());
+  const doneYear = S.books.filter((b) => b.status === 'done' && b.finishedAt && b.finishedAt.startsWith(y)).length;
+  const reading = S.books.filter((b) => b.status === 'reading').length;
+  const pagesYear = S.logs.filter((l) => l.date.startsWith(y)).reduce((s, l) => s + l.pages, 0);
+  const d = new Date();
+  const wd = '日一二三四五六'[d.getDay()];
+
+  let banners = '';
+  if (isIOS() && !isStandalone() && !S.meta.hideA2HS) {
+    banners += `<div class="banner warn"><div class="grow">建议先<b>添加到主屏幕</b>再开始记录：iPhone 上 Safari 与主屏幕图标的数据互不相通。</div><button data-act="a2hs-help">怎么做</button><button data-act="a2hs-hide" aria-label="不再提示">×</button></div>`;
+  }
+  if (hasSample()) {
+    banners += `<div class="banner"><div class="grow">当前显示的是<b>示例数据</b>，正式使用前可一键清空。</div><button data-act="clear-sample">清空示例</button></div>`;
+  }
+  if (realCount() > 0) {
+    const last = S.meta.lastExportAt;
+    const days = last ? daysBetween(dateKey(new Date(last)), today()) : null;
+    if (days === null || days >= BACKUP_REMIND_DAYS) {
+      banners += `<div class="banner warn"><div class="grow">${days === null ? '你还没有备份过数据' : `已经 ${days} 天没有备份了`}，数据只存在这台设备上。</div><button data-act="go" data-to="settings">去备份</button></div>`;
+    }
+  }
+
+  const recent = S.books.filter((b) => b.status !== 'want').sort((a, b) => {
+    if ((a.status === 'reading') !== (b.status === 'reading')) return a.status === 'reading' ? -1 : 1;
+    return byRecent(a, b);
+  }).slice(0, 4);
+
+  return `
+  <header class="page-head">
+    <div><div class="sub">${d.getMonth() + 1}月${d.getDate()}日 星期${wd} · ${greeting()}</div><h1>我的阅读空间</h1></div>
+    <a class="icon-btn" href="#/settings" aria-label="数据与设置">${ICON.gear}</a>
+  </header>
+  ${banners}
+  <section class="stats">
+    <div class="stat"><div class="num">${doneYear}<small>本</small></div><div class="lbl">${y} 年已读</div></div>
+    <div class="stat"><div class="num">${reading}<small>本</small></div><div class="lbl">正在阅读</div></div>
+    <div class="stat"><div class="num">${S.notes.length}<small>条</small></div><div class="lbl">笔记总数</div></div>
+    <div class="stat"><div class="num">${pagesYear.toLocaleString()}<small>页</small></div><div class="lbl">${y} 年阅读页数</div></div>
+  </section>
+  <section class="quick">
+    <button data-act="add-book">${ICON.book}添加书籍</button>
+    <button data-act="pick-progress">${ICON.prog}更新进度</button>
+    <button data-act="add-note">${ICON.pen}记笔记</button>
+  </section>
+  <section class="card" id="cal-card">${calendarHTML()}</section>
+  <section class="card">
+    <div class="card-title"><h2>最近阅读</h2><a class="more" href="#/shelf">全部书籍 ›</a></div>
+    ${recent.length ? `<div class="book-list">${recent.map((b) => bookRowHTML(b, true)).join('')}</div>` :
+      `<div class="empty"><div class="t">还没有在读的书</div><div class="small">从添加第一本书开始吧</div><button class="btn primary" data-act="add-book">${ICON.plus}添加书籍</button></div>`}
+  </section>`;
+}
+
+function calendarHTML() {
+  const t = today();
+  if (!ui.calMonth) { const n = new Date(); ui.calMonth = new Date(n.getFullYear(), n.getMonth(), 1); }
+  const m = ui.calMonth;
+  const year = m.getFullYear(), month = m.getMonth();
+  const offset = (m.getDay() + 6) % 7; // 周一开头
+  const days = new Date(year, month + 1, 0).getDate();
+  const act = activityMap();
+  let cells = '';
+  for (let i = 0; i < offset; i++) cells += '<div class="cal-day blank"></div>';
+  let readDays = 0, pages = 0, noteCnt = 0;
+  for (let d = 1; d <= days; d++) {
+    const k = `${year}-${pad(month + 1)}-${pad(d)}`;
+    const a = act[k];
+    let lv = 0;
+    if (a) {
+      pages += a.pages; noteCnt += a.notes.length;
+      if (a.pages > 0 || a.notes.length) readDays++;
+      lv = a.pages > 100 ? 4 : a.pages > 50 ? 3 : a.pages > 20 ? 2 : (a.pages > 0 || a.notes.length) ? 1 : 0;
+    }
+    const cls = ['cal-day', lv ? 'l' + lv : '', k === t ? 'today' : '', k > t ? 'future' : ''].join(' ');
+    const label = a ? `${d}日，读了${a.pages}页，${a.notes.length}条笔记` : `${d}日，无记录`;
+    cells += `<button class="${cls}" data-act="cal-day" data-date="${k}" aria-label="${label}">${d}${a && a.notes.length ? '<i class="dot"></i>' : ''}</button>`;
+  }
+  const now = new Date();
+  const isCurrent = year === now.getFullYear() && month === now.getMonth();
+  return `
+  <div class="cal-head"><h2>阅读日历</h2>
+    <div class="cal-nav">
+      <button class="icon-btn" data-act="cal-prev" aria-label="上个月">${ICON.left}</button>
+      <span class="m">${year}年${month + 1}月</span>
+      <button class="icon-btn" data-act="cal-next" aria-label="下个月" ${isCurrent ? 'disabled style="opacity:.3"' : ''}>${ICON.right}</button>
+    </div>
+  </div>
+  <div class="cal-grid">${'一二三四五六日'.split('').map((w) => `<div class="cal-wd">${w}</div>`).join('')}${cells}</div>
+  <div class="cal-foot">
+    <span>本月阅读 <b>${readDays}</b> 天 · ${pages} 页 · ${noteCnt} 条笔记</span>
+    <span class="legend">少<i style="background:var(--heat1)"></i><i style="background:var(--heat2)"></i><i style="background:var(--heat3)"></i><i style="background:var(--heat4)"></i>多<span class="ldot"></span>笔记</span>
+  </div>`;
+}
+
+function coverHTML(b, size = 'md') {
+  const src = covers[b.id] || b.coverUrl;
+  const gen = `<div class="gen-cover" style="--c:${coverColor(b.title)}"><span>${esc(b.title)}</span></div>`;
+  return `<div class="cover ${size}">${src ? `<img src="${esc(src)}" alt="" loading="lazy" onerror="this.remove()">` : ''}${gen}</div>`;
+}
+
+function bookRowHTML(b, withBtn) {
+  const p = pct(b);
+  const meta = [b.author, b.category].filter(Boolean).join(' · ') || '未填写作者';
+  let progLine = '';
+  if (b.status === 'done') progLine = `<div class="prog"><span>${b.finishedAt ? fmtDate(b.finishedAt) + ' 读完' : '已读完'}</span></div>`;
+  else if (b.totalPages) progLine = `<div class="prog"><div class="bar"><i style="width:${p}%"></i></div><span>${p}%</span></div>`;
+  else progLine = `<div class="prog"><span>未填写总页数</span></div>`;
+  const btn = withBtn && b.status !== 'done' ? `<button class="mini-btn" data-act="progress" data-id="${b.id}">进度</button>` : '';
+  return `<div class="book-row">
+    <a href="#/book/${b.id}">${coverHTML(b)}</a>
+    <a class="info" href="#/book/${b.id}">
+      <div class="book-title">${esc(b.title)}<span class="badge ${b.status}">${STATUS[b.status]}</span></div>
+      <div class="book-meta">${esc(meta)}</div>${progLine}
+    </a>${btn}
+  </div>`;
+}
+
+/* ---------- 视图：书架 ---------- */
+function viewShelf() {
+  const cnt = (s) => S.books.filter((b) => s === 'all' || b.status === s).length;
+  const cats = allCategories();
+  if (ui.shelfCat && !cats.includes(ui.shelfCat)) ui.shelfCat = '';
+  let list = S.books.filter((b) => (ui.shelfStatus === 'all' || b.status === ui.shelfStatus) && (!ui.shelfCat || b.category === ui.shelfCat));
+  const order = { reading: 0, want: 1, paused: 2, done: 3 };
+  list.sort((a, b) => (ui.shelfStatus === 'all' && order[a.status] !== order[b.status] ? order[a.status] - order[b.status] : byRecent(a, b)));
+  const tabs = ['all', ...STATUS_KEYS].map((s) => `<button class="chip ${ui.shelfStatus === s ? 'on' : ''}" data-act="shelf-status" data-v="${s}">${s === 'all' ? '全部' : STATUS[s]}<em>${cnt(s)}</em></button>`).join('');
+  const catChips = cats.length > 1 ? `<div class="chips">${['', ...cats].map((c) => `<button class="chip ${ui.shelfCat === c ? 'on' : ''}" data-act="shelf-cat" data-v="${esc(c)}">${c ? esc(c) : '全部分类'}</button>`).join('')}</div>` : '';
+  return `
+  <header class="page-head"><div><h1>书架</h1><div class="sub">共 ${S.books.length} 本书</div></div></header>
+  <div class="chips">${tabs}</div>${catChips}
+  <section class="card">
+    ${list.length ? `<div class="book-list">${list.map((b) => bookRowHTML(b, true)).join('')}</div>` :
+      `<div class="empty"><div class="t">${S.books.length ? '这里还没有书' : '书架是空的'}</div><div class="small">点右下角「添加书籍」放上第一本书</div></div>`}
+  </section>
+  <button class="fab" data-act="add-book">${ICON.plus}添加书籍</button>`;
+}
+
+/* ---------- 视图：笔记 ---------- */
+function sortNotes(list) {
+  return list.sort((a, b) => (a.date !== b.date ? (a.date < b.date ? 1 : -1) : (a.createdAt < b.createdAt ? 1 : -1)));
+}
+function viewNotes() {
+  const withNotes = S.books.filter((b) => notesOf(b.id).length).sort(byRecent);
+  if (ui.notesBook && !bookById(ui.notesBook)) ui.notesBook = '';
+  const list = sortNotes(S.notes.filter((n) => !ui.notesBook || n.bookId === ui.notesBook));
+  const chips = withNotes.length ? `<div class="chips"><button class="chip ${!ui.notesBook ? 'on' : ''}" data-act="notes-book" data-v="">全部<em>${S.notes.length}</em></button>${withNotes.map((b) => `<button class="chip ${ui.notesBook === b.id ? 'on' : ''}" data-act="notes-book" data-v="${b.id}">《${esc(b.title)}》<em>${notesOf(b.id).length}</em></button>`).join('')}</div>` : '';
+  return `
+  <header class="page-head"><div><h1>笔记</h1><div class="sub">${S.notes.length} 条笔记 · 来自 ${withNotes.length} 本书</div></div></header>
+  ${chips}
+  ${list.length ? list.map((n) => noteHTML(n)).join('') :
+    `<div class="card empty"><div class="t">还没有笔记</div><div class="small">读到打动你的句子，就记下来吧</div><button class="btn primary" data-act="add-note" data-book="${ui.notesBook}">${ICON.pen}记一条笔记</button></div>`}
+  <button class="fab" data-act="add-note" data-book="${ui.notesBook}">${ICON.pen}记笔记</button>`;
+}
+
+function hl(text, terms) {
+  text = String(text || '');
+  if (!terms || !terms.length) return esc(text);
+  const low = text.toLowerCase();
+  const marks = new Array(text.length).fill(false);
+  for (const t of terms) {
+    let i = 0;
+    while ((i = low.indexOf(t, i)) !== -1) { for (let j = i; j < i + t.length; j++) marks[j] = true; i += t.length; }
+  }
+  let out = '', on = false;
+  for (let i = 0; i < text.length; i++) {
+    if (marks[i] && !on) { out += '<mark>'; on = true; }
+    if (!marks[i] && on) { out += '</mark>'; on = false; }
+    out += esc(text[i]);
+  }
+  return out + (on ? '</mark>' : '');
+}
+
+function noteHTML(n, terms = [], showSource = true) {
+  const b = bookById(n.bookId);
+  const src = b ? `<a href="#/book/${b.id}">《${hl(b.title, terms)}》</a>` : '<span>（书籍已删除）</span>';
+  return `<article class="note">
+    ${n.chapter ? `<div class="chapter">${hl(n.chapter, terms)}</div>` : ''}
+    ${n.excerpt ? `<blockquote>${hl(n.excerpt, terms)}</blockquote>` : ''}
+    ${n.thought ? `<div class="sec"><b>我的感悟</b>${hl(n.thought, terms)}</div>` : ''}
+    ${n.action ? `<div class="sec act"><b>行动建议</b>${hl(n.action, terms)}</div>` : ''}
+    ${n.topics && n.topics.length ? `<div class="topics">${n.topics.map((t) => `<span class="tag"># ${hl(t, terms)}</span>`).join('')}</div>` : ''}
+    <div class="note-foot">
+      <div class="src">${showSource ? src + ' · ' : ''}${fmtDate(n.date)}</div>
+      <div class="ops"><button data-act="edit-note" data-id="${n.id}">编辑</button><button class="del" data-act="del-note" data-id="${n.id}">删除</button></div>
+    </div>
+  </article>`;
+}
+
+/* ---------- 视图：知识库 ---------- */
+function viewKB() {
+  const topics = allTopics();
+  if (ui.kbTopic && !topics.some(([t]) => t === ui.kbTopic)) ui.kbTopic = '';
+  return `
+  <header class="page-head"><div><h1>知识库</h1><div class="sub">汇总全部笔记，按关键词或主题查找</div></div></header>
+  <div class="search">${ICON.search}<input class="inp" id="kb-q" type="search" placeholder="搜索摘录、感悟、行动、书名…" value="${esc(ui.kbQuery)}" enterkeyhint="search" autocomplete="off"></div>
+  ${topics.length ? `<div class="chips" id="kb-topics">${kbTopicsHTML(topics)}</div>` : ''}
+  <div id="kb-results">${kbResultsHTML()}</div>`;
+}
+function kbTopicsHTML(topics) {
+  return `<button class="chip ${!ui.kbTopic ? 'on' : ''}" data-act="kb-topic" data-v="">全部主题</button>` +
+    topics.map(([t, c]) => `<button class="chip ${ui.kbTopic === t ? 'on' : ''}" data-act="kb-topic" data-v="${esc(t)}"># ${esc(t)}<em>${c}</em></button>`).join('');
+}
+function kbResultsHTML() {
+  const terms = ui.kbQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  let list = S.notes.slice();
+  if (ui.kbTopic) list = list.filter((n) => (n.topics || []).includes(ui.kbTopic));
+  if (terms.length) {
+    list = list.filter((n) => {
+      const b = bookById(n.bookId);
+      const hay = [n.chapter, n.excerpt, n.thought, n.action, (n.topics || []).join(' '), b ? b.title : '', b ? b.author : ''].join('\n').toLowerCase();
+      return terms.every((t) => hay.includes(t));
+    });
+  }
+  sortNotes(list);
+  if (!S.notes.length) return `<div class="card empty"><div class="t">知识库还是空的</div><div class="small">你记下的每一条笔记都会自动汇总到这里</div><button class="btn primary" data-act="add-note">${ICON.pen}记一条笔记</button></div>`;
+  if (!list.length) return `<div class="card empty"><div class="t">没有找到相关笔记</div><div class="small">换个关键词，或者切换主题试试</div></div>`;
+  const books = new Set(list.map((n) => n.bookId)).size;
+  return `<div class="small muted" style="margin:0 2px 10px">找到 ${list.length} 条笔记 · 来自 ${books} 本书</div>` + list.map((n) => noteHTML(n, terms)).join('');
+}
+function bindKB() {
+  const q = $('#kb-q');
+  if (!q) return;
+  let composing = false;
+  const update = () => { ui.kbQuery = q.value; $('#kb-results').innerHTML = kbResultsHTML(); };
+  q.addEventListener('compositionstart', () => { composing = true; });
+  q.addEventListener('compositionend', () => { composing = false; update(); });
+  q.addEventListener('input', () => { if (!composing) update(); });
+  q.addEventListener('keydown', (e) => { if (e.key === 'Enter') q.blur(); });
+}
+
+/* ---------- 视图：书籍详情 ---------- */
+function viewBook() {
+  const b = bookById(ui.param);
+  if (!b) return `<div class="back-row"><a class="icon-btn" href="#/shelf">${ICON.back}</a><span>书架</span></div><div class="card empty"><div class="t">这本书不存在或已被删除</div></div>`;
+  const p = pct(b);
+  const notes = sortNotes(notesOf(b.id));
+  const logs = logsOf(b.id).sort((x, y) => (x.date !== y.date ? (x.date < y.date ? 1 : -1) : (x.at < y.at ? 1 : -1)));
+  const logged = logs.reduce((s, l) => s + l.pages, 0);
+  const days = new Set(logs.map((l) => l.date)).size;
+  return `
+  <div class="back-row"><button class="icon-btn" data-act="back" aria-label="返回">${ICON.back}</button><span>返回</span></div>
+  <section class="hero">
+    ${coverHTML(b, 'lg')}
+    <div class="info">
+      <h1>${esc(b.title)}</h1>
+      <div class="meta">${esc(b.author || '未填写作者')}</div>
+      <div class="meta">${b.category ? esc(b.category) + ' · ' : ''}<span class="badge ${b.status}" style="margin-left:0">${STATUS[b.status]}</span></div>
+      <div class="row"><button class="btn sm" data-act="edit-book" data-id="${b.id}">编辑</button><button class="btn sm ghost text-danger" data-act="del-book" data-id="${b.id}">删除</button></div>
+    </div>
+  </section>
+  <section class="card big-prog">
+    <div class="card-title"><h2>阅读进度</h2>${b.status !== 'done' ? `<button class="mini-btn" data-act="progress" data-id="${b.id}">更新进度</button>` : `<button class="mini-btn" data-act="progress" data-id="${b.id}">修改页数</button>`}</div>
+    <div class="pct">${b.totalPages || b.status === 'done' ? p + '<small style="font-size:16px">%</small>' : '<span style="font-size:18px">未填写总页数</span>'}</div>
+    <div class="bar"><i style="width:${p}%"></i></div>
+    <div class="small muted">已读 ${b.readPages} / ${b.totalPages || '?'} 页${b.startedAt ? ' · ' + fmtDate(b.startedAt, true) + ' 开始' : ''}${b.finishedAt ? ' · ' + fmtDate(b.finishedAt, true) + ' 读完' : ''}</div>
+    <div class="kv"><div><b>${days}</b><span>阅读天数</span></div><div><b>${logged}</b><span>记录页数</span></div><div><b>${notes.length}</b><span>笔记</span></div></div>
+  </section>
+  <section>
+    <div class="card-title" style="padding:0 2px"><h2>读书笔记</h2><button class="mini-btn" data-act="add-note" data-book="${b.id}">＋ 记一条</button></div>
+    ${notes.length ? notes.map((n) => noteHTML(n, [], false)).join('') : `<div class="card empty"><div class="small">这本书还没有笔记</div></div>`}
+  </section>
+  ${logs.length ? `<section class="card"><div class="card-title"><h2>阅读记录</h2></div><ul class="log-list">${logs.slice(0, 30).map((l) => `<li><span>${fmtDate(l.date, true)}</span><span class="muted">读了 ${l.pages} 页</span></li>`).join('')}</ul>${logs.length > 30 ? `<div class="small muted" style="margin-top:8px">仅显示最近 30 条</div>` : ''}</section>` : ''}`;
+}
+
+/* ---------- 视图：数据与设置 ---------- */
+function viewSettings() {
+  const last = S.meta.lastExportAt;
+  const hasBackup = !!ui.backupInfo;
+  return `
+  <div class="back-row"><button class="icon-btn" data-act="back" aria-label="返回">${ICON.back}</button><span>返回</span></div>
+  <header class="page-head"><div><h1>数据与备份</h1><div class="sub">所有数据只保存在这台设备的浏览器里</div></div></header>
+  <section class="card">
+    <div class="card-title"><h2>数据概况</h2></div>
+    <ul class="set-list">
+      <li><span>书籍 / 笔记 / 阅读记录</span><span class="muted">${S.books.length} / ${S.notes.length} / ${S.logs.length}</span></li>
+      <li><span>已用空间</span><span class="muted" id="st-usage">计算中…</span></li>
+      <li><span>持久化存储</span><span class="muted" id="st-persist">检测中…</span></li>
+      <li><span>上次备份</span><span class="muted">${last ? fmtDate(dateKey(new Date(last)), true) : '从未备份'}</span></li>
+    </ul>
+  </section>
+  <section class="card">
+    <div class="card-title"><h2>导出备份</h2></div>
+    <p class="small muted" style="margin-top:-4px">导出为 JSON 文件，包含全部书籍、笔记、阅读记录和封面。建议每两周导出一次，并存到网盘或发给自己。</p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn primary block" data-act="export-share">分享 / 存储到「文件」</button>
+      <div class="btn-row"><button class="btn" data-act="export-download">下载文件</button><button class="btn" data-act="export-copy">复制为文本</button></div>
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-title"><h2>导入数据</h2></div>
+    <p class="small muted" style="margin-top:-4px">从备份文件恢复，可选择覆盖或合并。导入前会自动保存一份当前数据的快照。</p>
+    <div class="btn-row"><button class="btn" data-act="import-file">选择备份文件</button><button class="btn" data-act="import-paste">粘贴文本导入</button></div>
+    ${hasBackup ? `<div class="banner" style="margin:12px 0 0"><div class="grow small">有一份 ${esc(ui.backupInfo)} 的快照</div><button data-act="restore-backup">恢复</button></div>` : ''}
+  </section>
+  <section class="card">
+    <div class="card-title"><h2>清理</h2></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${hasSample() ? '<button class="btn block" data-act="clear-sample">清空示例数据（保留你自己添加的）</button>' : ''}
+      <button class="btn block text-danger" data-act="clear-all">清空全部数据</button>
+    </div>
+  </section>
+  <section class="card prose">
+    <div class="card-title"><h2>使用提示</h2></div>
+    ${a2hsHelpHTML()}
+    <h3>数据安全</h3>
+    <ol>
+      <li>数据存在浏览器里，不会上传到任何服务器。</li>
+      <li>清除浏览器数据、使用无痕模式、卸载浏览器，都会让数据消失。</li>
+      <li>换手机或换浏览器时：旧设备「导出」，新设备「导入」。</li>
+    </ol>
+  </section>
+  <div class="small muted" style="text-align:center;padding:4px 0 10px">我的阅读空间 · 数据版本 ${SCHEMA} · 存储方式 ${kv.mode === 'idb' ? 'IndexedDB' : kv.mode === 'local' ? 'localStorage' : '临时内存（刷新会丢失！）'}</div>`;
+}
+function a2hsHelpHTML() {
+  return `<h3>添加到手机主屏幕</h3>
+  <ol>
+    <li><b>iPhone</b>：用 Safari 打开本页 → 点底部「分享」按钮 → 选「添加到主屏幕」。以后都从主屏幕图标打开（Safari 与主屏幕图标的数据不互通）。</li>
+    <li><b>安卓</b>：用 Chrome 或 Edge 打开 → 右上角菜单 → 「添加到主屏幕」或「安装应用」。</li>
+  </ol>`;
+}
+async function fillSettingsInfo() {
+  const u = $('#st-usage'), p = $('#st-persist');
+  try {
+    if (navigator.storage && navigator.storage.estimate) {
+      const e = await navigator.storage.estimate();
+      if (u) u.textContent = `${(e.usage / 1048576).toFixed(2)} MB`;
+    } else if (u) u.textContent = '无法获取';
+  } catch (e) { if (u) u.textContent = '无法获取'; }
+  try {
+    if (navigator.storage && navigator.storage.persisted) {
+      const ok = await navigator.storage.persisted();
+      if (p) p.innerHTML = ok ? '已开启' : '<button class="mini-btn" data-act="persist">申请开启</button>';
+    } else if (p) p.textContent = '浏览器不支持';
+  } catch (e) { if (p) p.textContent = '浏览器不支持'; }
+}
+
+/* ---------- 底部弹层 ---------- */
+let sheetTimer = null;
+function openSheet(title, html, onMount) {
+  clearTimeout(sheetTimer);
+  const sheet = $('#sheet'), mask = $('#sheet-mask');
+  $('#sheet-title').textContent = title;
+  $('#sheet-body').innerHTML = html;
+  $('#sheet-body').scrollTop = 0;
+  sheet.hidden = false; mask.hidden = false;
+  requestAnimationFrame(() => { sheet.classList.add('open'); mask.classList.add('open'); });
+  document.body.style.overflow = 'hidden';
+  if (onMount) onMount($('#sheet-body'));
+}
+function closeSheet() {
+  const sheet = $('#sheet'), mask = $('#sheet-mask');
+  if (sheet.hidden) return;
+  sheet.classList.remove('open'); mask.classList.remove('open');
+  document.body.style.overflow = '';
+  sheetTimer = setTimeout(() => { sheet.hidden = true; mask.hidden = true; $('#sheet-body').innerHTML = ''; }, 240);
+}
+// 输入框被键盘挡住时，滚动到可见位置
+document.addEventListener('focusin', (e) => {
+  if (e.target.closest && e.target.closest('#sheet-body') && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) {
+    setTimeout(() => e.target.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
+  }
+});
+
+function dialog(title, msg, buttons) {
+  return new Promise((resolve) => {
+    const el = document.createElement('div');
+    el.className = 'dialog-mask';
+    el.innerHTML = `<div class="dialog" role="alertdialog" aria-modal="true"><h3>${esc(title)}</h3><p>${msg}</p>
+      <div class="btns ${buttons.length === 2 ? 'two' : ''}">${buttons.map((b, i) => `<button class="btn ${b.cls || ''}" data-i="${i}">${esc(b.label)}</button>`).join('')}</div></div>`;
+    el.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-i]');
+      if (!btn && e.target !== el) return;
+      e.stopPropagation();
+      el.remove();
+      resolve(btn ? buttons[+btn.dataset.i].value : null);
+    });
+    document.body.appendChild(el);
+    const first = el.querySelector('.btn.primary, .btn.danger');
+    if (first) first.focus({ preventScroll: true });
+  });
+}
+const confirmBox = (title, msg, okLabel = '确定', danger = false) =>
+  dialog(title, msg, [{ label: okLabel, value: true, cls: danger ? 'danger' : 'primary' }, { label: '取消', value: false, cls: 'ghost' }]);
+
+let toastTimer = null;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+/* ---------- 图片压缩 ---------- */
+function pickImage() {
+  return new Promise((resolve) => {
+    const input = $('#file-cover');
+    input.value = '';
+    input.onchange = () => resolve(input.files && input.files[0]);
+    input.click();
+  });
+}
+async function compressImage(file, maxW = 360, maxH = 540, quality = 0.78) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const scale = Math.min(1, maxW / img.naturalWidth, maxH / img.naturalHeight);
+    const w = Math.max(1, Math.round(img.naturalWidth * scale)), h = Math.max(1, Math.round(img.naturalHeight * scale));
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    return c.toDataURL('image/jpeg', quality);
+  } finally { URL.revokeObjectURL(url); }
+}
+
+/* ---------- 表单：书籍 ---------- */
+function openBookForm(id) {
+  const b = id ? bookById(id) : null;
+  let coverData = b ? covers[b.id] || null : null;
+  let coverUrl = b ? b.coverUrl || '' : '';
+  const status = b ? b.status : 'reading';
+  const cats = [...new Set([...allCategories(), ...DEFAULT_CATS])];
+  const previewBook = () => ({ id: '__preview', title: $('#bf-title').value.trim() || '书名', coverUrl });
+  const html = `
+  <form id="book-form" novalidate>
+    <div class="field"><label for="bf-title">书名 <span class="req">*</span></label><input id="bf-title" name="title" value="${esc(b ? b.title : '')}" placeholder="例如：活着" autocomplete="off" enterkeyhint="next"></div>
+    <div class="grid2">
+      <div class="field"><label for="bf-author">作者</label><input id="bf-author" name="author" value="${esc(b ? b.author : '')}" autocomplete="off"></div>
+      <div class="field"><label for="bf-cat">分类</label><input id="bf-cat" name="category" list="cat-list" value="${esc(b ? b.category : '')}" placeholder="选择或输入" autocomplete="off"><datalist id="cat-list">${cats.map((c) => `<option value="${esc(c)}">`).join('')}</datalist></div>
+    </div>
+    <div class="field"><div class="lbl">阅读状态</div><div class="seg">${STATUS_KEYS.map((s) => `<label><input type="radio" name="status" value="${s}" ${s === status ? 'checked' : ''}><span>${STATUS[s]}</span></label>`).join('')}</div></div>
+    <div class="grid2">
+      <div class="field"><label for="bf-total">总页数</label><input id="bf-total" name="total" type="number" inputmode="numeric" pattern="[0-9]*" min="0" value="${b && b.totalPages ? b.totalPages : ''}" placeholder="如 320"></div>
+      <div class="field"><label for="bf-read">已读到第几页</label><input id="bf-read" name="read" type="number" inputmode="numeric" pattern="[0-9]*" min="0" value="${b && b.readPages ? b.readPages : ''}" placeholder="0"></div>
+    </div>
+    <div class="field hint" style="margin-top:-10px">这里填写的页数视为补录，不计入阅读日历。日常阅读请用「更新进度」。</div>
+    <div class="field" id="bf-fin-wrap" ${status === 'done' ? '' : 'hidden'}><label for="bf-fin">读完日期</label><input id="bf-fin" name="finishedAt" type="date" max="${today()}" value="${b && b.finishedAt ? b.finishedAt : today()}"></div>
+    <div class="field"><div class="lbl">封面</div>
+      <div class="cover-edit"><div id="bf-cover"></div>
+        <div class="ops">
+          <button type="button" class="btn sm" id="bf-pick">拍照 / 从相册选择</button>
+          <input id="bf-url" class="inp" placeholder="或粘贴图片链接 https://…" value="${esc(coverUrl)}" inputmode="url" autocomplete="off">
+          <button type="button" class="btn sm ghost" id="bf-clear">使用默认封面</button>
+        </div>
+      </div>
+      <div class="hint">图片会自动压缩后保存在本机；网络链接可能会失效。</div>
+    </div>
+    <button class="btn primary block" type="submit">${b ? '保存修改' : '添加到书架'}</button>
+  </form>`;
+  openSheet(b ? '编辑书籍' : '添加书籍', html, (root) => {
+    const form = $('#book-form', root);
+    const fe = form.elements;
+    const refresh = () => {
+      const pb = previewBook();
+      if (coverData) covers.__preview = coverData; else delete covers.__preview;
+      $('#bf-cover', root).innerHTML = coverHTML(pb, 'lg');
+      delete covers.__preview;
+    };
+    refresh();
+    $('#bf-title', root).addEventListener('input', refresh);
+    $$('input[name=status]', root).forEach((r) => r.addEventListener('change', () => { $('#bf-fin-wrap', root).hidden = fe.status.value !== 'done'; }));
+    $('#bf-pick', root).addEventListener('click', async () => {
+      const file = await pickImage();
+      if (!file) return;
+      try { coverData = await compressImage(file); coverUrl = ''; $('#bf-url', root).value = ''; refresh(); }
+      catch (e) { toast('这张图片无法读取，换一张试试'); }
+    });
+    $('#bf-url', root).addEventListener('change', (e) => {
+      const v = e.target.value.trim();
+      if (v && !/^https?:\/\//i.test(v)) { toast('请输入以 http 开头的图片链接'); return; }
+      coverUrl = v; if (v) coverData = null; refresh();
+    });
+    $('#bf-clear', root).addEventListener('click', () => { coverData = null; coverUrl = ''; $('#bf-url', root).value = ''; refresh(); });
+    if (!b) setTimeout(() => $('#bf-title', root).focus(), 260);
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const title = fe.title.value.trim();
+      if (!title) { toast('请填写书名'); fe.title.focus(); return; }
+      const urlField = $('#bf-url', root).value.trim();
+      if (urlField && /^https?:\/\//i.test(urlField) && !coverData) coverUrl = urlField;
+      const st = fe.status.value;
+      const total = posInt(fe.total.value);
+      let read = posInt(fe.read.value);
+      if (total && read > total) read = total;
+      if (st === 'done' && total) read = total;
+      let fin = st === 'done' ? (isDateKey(fe.finishedAt.value) ? fe.finishedAt.value : today()) : null;
+      if (fin && fin > today()) fin = today();
+      const t = nowISO();
+      const data = { title, author: fe.author.value.trim(), category: fe.category.value.trim(), status: st, totalPages: total, readPages: read, finishedAt: fin, coverUrl, updatedAt: t };
+      let target;
+      if (b) {
+        data.maxPage = Math.max(highWater(b), read);
+        Object.assign(b, data);
+        if (!b.startedAt && (st === 'reading' || st === 'done')) b.startedAt = st === 'done' ? fin : today();
+        delete b.sample;
+        target = b;
+      } else {
+        target = { id: uid(), createdAt: t, startedAt: st === 'reading' ? today() : st === 'done' ? fin : null, maxPage: read, ...data };
+        S.books.push(target);
+      }
+      if (coverData) covers[target.id] = coverData; else delete covers[target.id];
+      save(true);
+      closeSheet();
+      toast(b ? '已保存' : `已添加《${title}》`);
+      render();
+    });
+  });
+}
+
+async function deleteBook(id) {
+  const b = bookById(id);
+  if (!b) return;
+  const n = notesOf(id).length, l = logsOf(id).length;
+  const extra = n || l ? `<br>将同时删除这本书的 <b>${n}</b> 条笔记和 <b>${l}</b> 条阅读记录，日历和统计会相应减少。` : '';
+  if (!(await confirmBox('删除这本书？', `《${esc(b.title)}》删除后无法恢复。${extra}`, '删除', true))) return;
+  S.books = S.books.filter((x) => x.id !== id);
+  S.notes = S.notes.filter((x) => x.bookId !== id);
+  S.logs = S.logs.filter((x) => x.bookId !== id);
+  delete covers[id];
+  save(true);
+  toast('已删除');
+  if (ui.route === 'book') go('shelf'); else render();
+}
+
+/* ---------- 表单：更新进度 ---------- */
+function pickProgress() {
+  if (!S.books.length) { toast('先添加一本书吧'); openBookForm(); return; }
+  const list = S.books.filter((b) => b.status === 'reading').sort(byRecent);
+  const others = S.books.filter((b) => b.status === 'want' || b.status === 'paused').sort(byRecent);
+  if (list.length === 1 && !others.length) { openProgress(list[0].id); return; }
+  const row = (b) => `<button data-act="progress" data-id="${b.id}">${coverHTML(b, 'sm')}<div style="flex:1;min-width:0"><div class="book-title" style="font-size:16px">${esc(b.title)}</div><div class="small muted">${b.totalPages ? `已读 ${b.readPages}/${b.totalPages} 页 · ${pct(b)}%` : STATUS[b.status]}</div></div></button>`;
+  let html = '';
+  if (list.length) html += `<div class="small muted">在读</div><div class="pick-list">${list.map(row).join('')}</div>`;
+  if (others.length) html += `<div class="small muted" style="margin-top:12px">想读 / 搁置（记录进度后会变为在读）</div><div class="pick-list">${others.map(row).join('')}</div>`;
+  if (!html) html = `<div class="empty"><div class="small">没有需要更新进度的书</div><button class="btn primary" data-act="add-book">添加书籍</button></div>`;
+  openSheet('选择要更新的书', html);
+}
+
+function openProgress(id) {
+  const b = bookById(id);
+  if (!b) return;
+  const t = today();
+  const html = `
+  <form id="prog-form" novalidate>
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px">${coverHTML(b, 'sm')}<div style="min-width:0"><div class="book-title">${esc(b.title)}</div><div class="small muted">当前已读 ${b.readPages}${b.totalPages ? ' / ' + b.totalPages : ''} 页${b.totalPages ? ' · ' + pct(b) + '%' : ''}</div></div></div>
+    ${b.totalPages ? '' : `<div class="field"><label for="pf-total">总页数 <span class="req">*</span></label><input id="pf-total" name="total" type="number" inputmode="numeric" pattern="[0-9]*" placeholder="填写后才能计算百分比"></div>`}
+    <div class="field"><label for="pf-page">今天读到第几页</label><input id="pf-page" name="page" type="number" inputmode="numeric" pattern="[0-9]*" min="0" value="${b.readPages || ''}" placeholder="${b.readPages}"></div>
+    <div class="quick-add"><button type="button" class="btn sm" data-add="10">+10</button><button type="button" class="btn sm" data-add="20">+20</button><button type="button" class="btn sm" data-add="50">+50</button><button type="button" class="btn sm" data-add="all">读完</button></div>
+    <div class="field"><label for="pf-date">阅读日期</label><input id="pf-date" name="date" type="date" max="${t}" value="${t}"><div class="hint">忘了记录可以改成实际读书的那天。只有页数增加时才会计入阅读日历。</div></div>
+    <button class="btn primary block" type="submit">保存进度</button>
+  </form>`;
+  openSheet('更新阅读进度', html, (root) => {
+    const form = $('#prog-form', root);
+    const fe = form.elements;
+    const getTotal = () => b.totalPages || posInt(fe.total && fe.total.value);
+    $$('[data-add]', root).forEach((btn) => btn.addEventListener('click', () => {
+      const total = getTotal();
+      const cur = parseInt(fe.page.value, 10) || b.readPages || 0;
+      if (btn.dataset.add === 'all') {
+        if (!total) { toast('请先填写总页数'); fe.total && fe.total.focus(); return; }
+        fe.page.value = total;
+      } else {
+        let v = cur + parseInt(btn.dataset.add, 10);
+        if (total && v > total) v = total;
+        fe.page.value = v;
+      }
+    }));
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const total = getTotal();
+      if (!total) { toast('请先填写总页数'); fe.total && fe.total.focus(); return; }
+      let page = parseInt(fe.page.value, 10);
+      if (!Number.isFinite(page) || page < 0) { toast('请输入正确的页码'); fe.page.focus(); return; }
+      if (page > total) page = total;
+      const date = isDateKey(fe.date.value) ? fe.date.value : t;
+      if (date > today()) { toast('不能记录未来的日期'); return; }
+      // 只有超过「记录过的最高页数」的部分才计入，往回改页数后再往前读不会重复计算
+      const base = highWater(b);
+      const delta = page - base;
+      const forward = page > b.readPages;
+      b.totalPages = total;
+      b.readPages = page;
+      b.maxPage = Math.max(base, page);
+      b.updatedAt = nowISO();
+      delete b.sample;
+      let msg = delta > 0 ? `已记录：读了 ${delta} 页` : forward ? '进度已更新（这些页之前已记过，不重复计入日历）' : '页数已修改（未增加，不计入日历）';
+      if (delta > 0) {
+        S.logs.push({ id: uid(), bookId: b.id, date, pages: delta, at: nowISO() });
+        if (!b.startedAt || date < b.startedAt) b.startedAt = date;
+      }
+      if (forward && (b.status === 'want' || b.status === 'paused')) b.status = 'reading';
+      if (page >= total && b.status !== 'done') { b.status = 'done'; b.finishedAt = date; msg = `恭喜读完《${b.title}》！`; }
+      save();
+      closeSheet();
+      toast(msg);
+      render();
+    });
+  });
+}
+
+/* ---------- 表单：笔记 ---------- */
+function openNoteForm(id, bookId) {
+  const n = id ? S.notes.find((x) => x.id === id) : null;
+  if (!n && !S.books.length) { toast('先添加一本书，再记笔记'); openBookForm(); return; }
+  const books = S.books.slice().sort((a, b) => {
+    if ((a.status === 'reading') !== (b.status === 'reading')) return a.status === 'reading' ? -1 : 1;
+    return byRecent(a, b);
+  });
+  const selected = n ? n.bookId : bookId && bookById(bookId) ? bookId : books[0].id;
+  let topics = n ? [...(n.topics || [])] : [];
+  const existing = allTopics().map(([t]) => t);
+  const html = `
+  <form id="note-form" novalidate>
+    <div class="field"><label for="nf-book">书籍 <span class="req">*</span></label><select id="nf-book" name="book">${books.map((b) => `<option value="${b.id}" ${b.id === selected ? 'selected' : ''}>《${esc(b.title)}》${b.author ? ' ' + esc(b.author) : ''}</option>`).join('')}</select></div>
+    <div class="field"><label for="nf-ch">章节</label><input id="nf-ch" name="chapter" value="${esc(n ? n.chapter : '')}" placeholder="例如：第三章 / P128" autocomplete="off"></div>
+    <div class="field"><label for="nf-ex">摘录</label><textarea id="nf-ex" name="excerpt" class="serif" placeholder="书中打动你的原文">${esc(n ? n.excerpt : '')}</textarea></div>
+    <div class="field"><label for="nf-th">个人感悟</label><textarea id="nf-th" name="thought" placeholder="读到这里，你想到了什么？">${esc(n ? n.thought : '')}</textarea></div>
+    <div class="field"><label for="nf-ac">行动建议</label><textarea id="nf-ac" name="action" style="min-height:64px" placeholder="可以落到生活里的一件小事">${esc(n ? n.action : '')}</textarea></div>
+    <div class="field"><div class="lbl">主题</div>
+      <div class="topic-box" id="nf-topics"></div>
+      <div class="sugg" id="nf-sugg"></div>
+      <div class="hint">输入后按回车或逗号添加，可添加多个。</div>
+    </div>
+    <div class="field"><label for="nf-date">记录日期</label><input id="nf-date" name="date" type="date" max="${today()}" value="${n ? n.date : today()}"></div>
+    <button class="btn primary block" type="submit">${n ? '保存修改' : '保存笔记'}</button>
+  </form>`;
+  openSheet(n ? '编辑笔记' : '记一条笔记', html, (root) => {
+    const form = $('#note-form', root);
+    const fe = form.elements;
+    const box = $('#nf-topics', root);
+    const sugg = $('#nf-sugg', root);
+    let draft = '';
+    const addTopic = (raw) => {
+      for (const part of String(raw).split(/[,，、;；\s]+/)) {
+        const t = part.replace(/^#+/, '').trim().slice(0, 20);
+        if (t && !topics.includes(t)) topics.push(t);
+      }
+    };
+    const draw = (focus) => {
+      box.innerHTML = topics.map((t, i) => `<span class="t">${esc(t)}<button type="button" data-rm="${i}" aria-label="移除">×</button></span>`).join('') +
+        `<input id="nf-tin" placeholder="${topics.length ? '' : '如：心理、人际关系'}" autocomplete="off" enterkeyhint="done">`;
+      const s = existing.filter((t) => !topics.includes(t)).slice(0, 12);
+      sugg.innerHTML = s.map((t) => `<button type="button" data-sg="${esc(t)}">+ ${esc(t)}</button>`).join('');
+      const inp = $('#nf-tin', box);
+      inp.value = draft;
+      let composing = false;
+      inp.addEventListener('compositionstart', () => { composing = true; });
+      inp.addEventListener('compositionend', () => { composing = false; });
+      inp.addEventListener('input', () => {
+        draft = inp.value;
+        if (!composing && /[,，、;；]/.test(inp.value)) { addTopic(inp.value); draft = ''; draw(true); }
+      });
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.isComposing && !composing) { e.preventDefault(); if (inp.value.trim()) { addTopic(inp.value); draft = ''; draw(true); } }
+        else if (e.key === 'Backspace' && !inp.value && topics.length) { topics.pop(); draw(true); }
+      });
+      inp.addEventListener('blur', () => { if (inp.value.trim()) { addTopic(inp.value); draft = ''; setTimeout(() => draw(false), 0); } });
+      if (focus) inp.focus({ preventScroll: true });
+    };
+    box.addEventListener('click', (e) => {
+      const rm = e.target.closest('[data-rm]');
+      if (rm) { topics.splice(+rm.dataset.rm, 1); draw(false); return; }
+      if (e.target === box) $('#nf-tin', box).focus();
+    });
+    sugg.addEventListener('click', (e) => {
+      const sg = e.target.closest('[data-sg]');
+      if (sg) { addTopic(sg.dataset.sg); draw(false); }
+    });
+    draw(false);
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const tin = $('#nf-tin', box);
+      if (tin && tin.value.trim()) { addTopic(tin.value); draft = ''; }
+      const data = {
+        bookId: fe.book.value,
+        chapter: fe.chapter.value.trim(),
+        excerpt: fe.excerpt.value.trim(),
+        thought: fe.thought.value.trim(),
+        action: fe.action.value.trim(),
+        topics: topics.slice(),
+        date: isDateKey(fe.date.value) && fe.date.value <= today() ? fe.date.value : today(),
+        updatedAt: nowISO(),
+      };
+      if (!bookById(data.bookId)) { toast('请选择书籍'); return; }
+      if (!data.excerpt && !data.thought && !data.action) { toast('摘录、感悟、行动建议至少填一项'); fe.excerpt.focus(); return; }
+      if (n) { Object.assign(n, data); delete n.sample; }
+      else S.notes.push({ id: uid(), createdAt: data.updatedAt, ...data });
+      save();
+      closeSheet();
+      toast(n ? '笔记已保存' : '已记下一条笔记');
+      render();
+    });
+  });
+}
+
+async function deleteNote(id) {
+  const n = S.notes.find((x) => x.id === id);
+  if (!n) return;
+  const preview = esc((n.excerpt || n.thought || n.action).slice(0, 40));
+  if (!(await confirmBox('删除这条笔记？', `「${preview}${(n.excerpt || n.thought || n.action).length > 40 ? '…' : ''}」<br>删除后无法恢复。`, '删除', true))) return;
+  S.notes = S.notes.filter((x) => x.id !== id);
+  save();
+  toast('已删除');
+  render();
+}
+
+/* ---------- 日历：某一天的记录 ---------- */
+function openDay(k) {
+  const a = activityMap()[k];
+  const title = fmtDate(k, true);
+  if (!a || (!a.pages && !a.notes.length)) {
+    openSheet(title, `<div class="empty"><div class="small">${k > today() ? '这一天还没到' : '这一天没有阅读记录'}</div>${k <= today() ? `<button class="btn primary" data-act="pick-progress">记录阅读进度</button>` : ''}</div>`);
+    return;
+  }
+  const per = {};
+  for (const l of a.logs) per[l.bookId] = (per[l.bookId] || 0) + l.pages;
+  const rows = Object.entries(per).map(([bid, p]) => {
+    const b = bookById(bid);
+    return `<li><span>《${esc(b ? b.title : '已删除的书')}》</span><span class="muted">${p} 页</span></li>`;
+  }).join('');
+  openSheet(title, `
+    ${a.pages ? `<div class="card-title"><h2>读了 ${a.pages} 页</h2></div><ul class="log-list" style="margin-bottom:16px">${rows}</ul>` : ''}
+    ${a.notes.length ? `<div class="card-title"><h2>${a.notes.length} 条笔记</h2></div>${sortNotes(a.notes.slice()).map((n) => noteHTML(n)).join('')}` : ''}`);
+}
+
+/* ---------- 导出 / 导入 ---------- */
+const exportName = (ext = 'json') => `阅读空间备份-${today()}.${ext}`;
+function buildExport() {
+  return JSON.stringify({ app: APP_ID, version: SCHEMA, exportedAt: nowISO(), data: S, covers });
+}
+function markExported() { S.meta.lastExportAt = nowISO(); save(); }
+async function exportShare() {
+  const txt = buildExport();
+  const candidates = [new File([txt], exportName('json'), { type: 'application/json' }), new File([txt], exportName('txt'), { type: 'text/plain' })];
+  const file = navigator.canShare ? candidates.find((f) => { try { return navigator.canShare({ files: [f] }); } catch (e) { return false; } }) : null;
+  if (!file) { toast('当前浏览器不支持分享文件，请用「下载文件」或「复制为文本」'); return; }
+  try {
+    await navigator.share({ files: [file], title: '我的阅读空间备份' });
+    markExported(); render(); toast('已导出备份');
+  } catch (e) {
+    if (e.name !== 'AbortError') toast('分享失败，请改用「下载文件」或「复制为文本」');
+  }
+}
+function exportDownload() {
+  const blob = new Blob([buildExport()], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = exportName('json');
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+  markExported(); render();
+  toast('已开始下载备份文件');
+}
+async function exportCopy() {
+  const txt = buildExport();
+  let ok = false;
+  try { await navigator.clipboard.writeText(txt); ok = true; } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = txt; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { ok = document.execCommand('copy'); } catch (e2) { ok = false; }
+    ta.remove();
+  }
+  if (ok) { markExported(); render(); toast(`已复制（约 ${Math.ceil(txt.length / 1024)} KB），可粘贴到备忘录或发给自己`); }
+  else toast('复制失败，请改用「下载文件」');
+}
+
+function sanitize(d, inCovers) {
+  const str = (v, max = 5000) => (typeof v === 'string' ? v.slice(0, max) : '');
+  const books = (Array.isArray(d.books) ? d.books : []).filter((b) => b && typeof b.id === 'string' && str(b.title).trim()).map((b) => ({
+    id: b.id, title: str(b.title, 200).trim(), author: str(b.author, 200), category: str(b.category, 50),
+    status: STATUS[b.status] ? b.status : 'want', totalPages: posInt(b.totalPages), readPages: Math.min(posInt(b.readPages), posInt(b.totalPages) || Infinity), maxPage: posInt(b.maxPage),
+    startedAt: isDateKey(b.startedAt) ? b.startedAt : null, finishedAt: isDateKey(b.finishedAt) ? b.finishedAt : null,
+    coverUrl: /^https?:\/\//i.test(b.coverUrl || '') ? str(b.coverUrl, 2000) : '',
+    createdAt: str(b.createdAt, 40) || nowISO(), updatedAt: str(b.updatedAt, 40) || nowISO(), ...(b.sample ? { sample: true } : {}),
+  }));
+  const ids = new Set(books.map((b) => b.id));
+  const notes = (Array.isArray(d.notes) ? d.notes : []).filter((n) => n && typeof n.id === 'string' && ids.has(n.bookId)).map((n) => ({
+    id: n.id, bookId: n.bookId, chapter: str(n.chapter, 200), excerpt: str(n.excerpt), thought: str(n.thought), action: str(n.action),
+    topics: (Array.isArray(n.topics) ? n.topics : []).filter((t) => typeof t === 'string' && t.trim()).map((t) => t.trim().slice(0, 20)),
+    date: isDateKey(n.date) ? n.date : today(), createdAt: str(n.createdAt, 40) || nowISO(), updatedAt: str(n.updatedAt, 40) || nowISO(), ...(n.sample ? { sample: true } : {}),
+  })).filter((n) => n.excerpt || n.thought || n.action);
+  const logs = (Array.isArray(d.logs) ? d.logs : []).filter((l) => l && typeof l.id === 'string' && ids.has(l.bookId) && isDateKey(l.date) && posInt(l.pages)).map((l) => ({
+    id: l.id, bookId: l.bookId, date: l.date, pages: posInt(l.pages), at: str(l.at, 40) || isoAt(l.date), ...(l.sample ? { sample: true } : {}),
+  }));
+  const cv = {};
+  for (const [k, v] of Object.entries(inCovers || {})) if (ids.has(k) && typeof v === 'string' && v.startsWith('data:image/')) cv[k] = v;
+  return { books, notes, logs, covers: cv, lastExportAt: d.meta && typeof d.meta.lastExportAt === 'string' ? d.meta.lastExportAt : null };
+}
+
+async function handleImport(text) {
+  let obj;
+  try { obj = JSON.parse(text); } catch (e) { toast('文件内容不是有效的备份（JSON 解析失败）'); return; }
+  if (!obj || obj.app !== APP_ID || !obj.data || !Array.isArray(obj.data.books)) { toast('这不是「我的阅读空间」的备份文件'); return; }
+  if (obj.version > SCHEMA) { toast('备份来自更新的版本，请先更新本页面'); return; }
+  const inc = sanitize(obj.data, obj.covers);
+  const when = obj.exportedAt ? fmtDate(dateKey(new Date(obj.exportedAt)), true) : '未知时间';
+  const msg = `备份时间：${when}<br>包含 <b>${inc.books.length}</b> 本书、<b>${inc.notes.length}</b> 条笔记、<b>${inc.logs.length}</b> 条阅读记录。<br><br><b>覆盖</b>：用备份替换当前全部数据。<br><b>合并</b>：保留当前数据，补入备份里的内容（同一条记录取较新的）。`;
+  const mode = await dialog('导入备份', msg, [
+    { label: '覆盖当前数据', value: 'replace', cls: 'primary' },
+    { label: '合并到当前数据', value: 'merge' },
+    { label: '取消', value: null, cls: 'ghost' },
+  ]);
+  if (!mode) return;
+  await snapshot('导入前');
+  if (mode === 'replace') {
+    S = { version: SCHEMA, books: inc.books, notes: inc.notes, logs: inc.logs, meta: { ...S.meta, seeded: true, lastExportAt: inc.lastExportAt || S.meta.lastExportAt } };
+    covers = inc.covers;
+  } else {
+    const mergeBy = (cur, add, useTime) => {
+      const m = new Map(cur.map((x) => [x.id, x]));
+      const won = new Set();
+      for (const x of add) {
+        const old = m.get(x.id);
+        if (!old || (useTime && x.updatedAt > old.updatedAt)) { m.set(x.id, x); won.add(x.id); }
+      }
+      return [[...m.values()], won];
+    };
+    const [books, wonBooks] = mergeBy(S.books, inc.books, true);
+    S.books = books;
+    [S.notes] = mergeBy(S.notes, inc.notes, true);
+    [S.logs] = mergeBy(S.logs, inc.logs, false);
+    for (const [k, v] of Object.entries(inc.covers)) if (wonBooks.has(k) || !covers[k]) covers[k] = v;
+  }
+  await save(true);
+  toast(mode === 'replace' ? '导入完成' : '合并完成');
+  closeSheet();
+  go('home');
+}
+
+async function snapshot(reason) {
+  const snap = { at: nowISO(), reason, state: JSON.parse(JSON.stringify(S)), covers: { ...covers } };
+  try { await kv.set('backup', snap); ui.backupInfo = `${fmtDate(dateKey(new Date(snap.at)), true)}${reason}`; } catch (e) { console.error(e); }
+}
+async function loadBackupInfo() {
+  try {
+    const b = await kv.get('backup');
+    ui.backupInfo = b ? `${fmtDate(dateKey(new Date(b.at)), true)}${b.reason}` : '';
+  } catch (e) { ui.backupInfo = ''; }
+}
+async function restoreBackup() {
+  const b = await kv.get('backup');
+  if (!b) { toast('没有可恢复的快照'); return; }
+  if (!(await confirmBox('恢复快照？', `将恢复到 ${esc(ui.backupInfo)} 的状态。当前数据会被换成快照；你也可以再次点「恢复」换回来。`, '恢复'))) return;
+  const cur = { at: nowISO(), reason: '恢复前', state: JSON.parse(JSON.stringify(S)), covers: { ...covers } };
+  S = b.state; covers = b.covers || {};
+  await kv.set('backup', cur);
+  ui.backupInfo = `${fmtDate(today(), true)}恢复前`;
+  await save(true);
+  toast('已恢复');
+  render();
+  fillSettingsInfo();
+}
+
+async function clearSample() {
+  if (!(await confirmBox('清空示例数据？', '只删除示例书籍、笔记和阅读记录，你自己添加或修改过的内容会保留。', '清空示例'))) return;
+  const ids = new Set(S.books.filter((b) => b.sample).map((b) => b.id));
+  S.books = S.books.filter((b) => !b.sample);
+  S.notes = S.notes.filter((n) => !n.sample && !ids.has(n.bookId));
+  S.logs = S.logs.filter((l) => !l.sample && !ids.has(l.bookId));
+  for (const id of ids) delete covers[id];
+  S.meta.seeded = true;
+  await save(true);
+  toast('示例数据已清空，开始记录你自己的阅读吧');
+  render();
+}
+async function clearAll() {
+  if (!(await confirmBox('清空全部数据？', '书籍、笔记、阅读记录和封面都会被删除。<br>清空前会自动保存一份快照，可以在本页「恢复」。', '全部清空', true))) return;
+  await snapshot('清空前');
+  S = emptyState();
+  covers = {};
+  await save(true);
+  toast('已清空全部数据');
+  render();
+  fillSettingsInfo();
+}
+
+function openPasteImport() {
+  openSheet('粘贴文本导入', `
+    <div class="field"><label for="paste-ta">把之前「复制为文本」得到的内容粘贴到这里</label><textarea id="paste-ta" style="min-height:180px;font-family:monospace;font-size:13px" placeholder='{"app":"reading-space", ...}'></textarea></div>
+    <button class="btn primary block" id="paste-go">导入</button>`, (root) => {
+    $('#paste-go', root).addEventListener('click', () => {
+      const v = $('#paste-ta', root).value.trim();
+      if (!v) { toast('请先粘贴备份内容'); return; }
+      handleImport(v);
+    });
+  });
+}
+
+/* ---------- 事件分发 ---------- */
+const actions = {
+  'go': (el) => go(el.dataset.to),
+  'back': () => { if (navCount > 0) history.back(); else go(ui.route === 'book' ? 'shelf' : 'home'); },
+  'close-sheet': () => closeSheet(),
+  'add-book': () => openBookForm(),
+  'edit-book': (el) => openBookForm(el.dataset.id),
+  'del-book': (el) => deleteBook(el.dataset.id),
+  'progress': (el) => openProgress(el.dataset.id),
+  'pick-progress': () => pickProgress(),
+  'add-note': (el) => openNoteForm(null, el.dataset.book || (ui.route === 'book' ? ui.param : '')),
+  'edit-note': (el) => openNoteForm(el.dataset.id),
+  'del-note': (el) => deleteNote(el.dataset.id),
+  'cal-prev': () => { const m = ui.calMonth; ui.calMonth = new Date(m.getFullYear(), m.getMonth() - 1, 1); $('#cal-card').innerHTML = calendarHTML(); },
+  'cal-next': () => {
+    const m = ui.calMonth, n = new Date();
+    if (m.getFullYear() === n.getFullYear() && m.getMonth() === n.getMonth()) return;
+    ui.calMonth = new Date(m.getFullYear(), m.getMonth() + 1, 1); $('#cal-card').innerHTML = calendarHTML();
+  },
+  'cal-day': (el) => openDay(el.dataset.date),
+  'shelf-status': (el) => { ui.shelfStatus = el.dataset.v; render(); },
+  'shelf-cat': (el) => { ui.shelfCat = el.dataset.v; render(); },
+  'notes-book': (el) => { ui.notesBook = el.dataset.v; render(); },
+  'kb-topic': (el) => {
+    ui.kbTopic = el.dataset.v;
+    const box = $('#kb-topics');
+    if (box) { const x = box.scrollLeft; box.innerHTML = kbTopicsHTML(allTopics()); box.scrollLeft = x; }
+    $('#kb-results').innerHTML = kbResultsHTML();
+  },
+  'export-share': () => exportShare(),
+  'export-download': () => exportDownload(),
+  'export-copy': () => exportCopy(),
+  'import-file': () => { const i = $('#file-import'); i.value = ''; i.click(); },
+  'import-paste': () => openPasteImport(),
+  'restore-backup': () => restoreBackup(),
+  'clear-sample': () => clearSample(),
+  'clear-all': () => clearAll(),
+  'persist': async () => {
+    try {
+      const ok = await navigator.storage.persist();
+      toast(ok ? '已开启持久化存储' : '浏览器暂未同意。添加到主屏幕并经常使用后，通常会自动开启');
+    } catch (e) { toast('浏览器不支持'); }
+    fillSettingsInfo();
+  },
+  'a2hs-help': () => openSheet('添加到主屏幕', `<div class="prose">${a2hsHelpHTML()}</div>`),
+  'a2hs-hide': () => { S.meta.hideA2HS = true; save(); render(); },
+};
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  const fn = actions[el.dataset.act];
+  if (fn) { e.preventDefault(); fn(el, e); }
+});
+$('#file-import').addEventListener('change', async (e) => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  try { handleImport(await f.text()); } catch (err) { toast('读取文件失败'); }
+});
+
+/* ---------- 启动 ---------- */
+async function boot() {
+  await kv.init();
+  try {
+    const st = await kv.get('state');
+    if (st && Array.isArray(st.books)) {
+      S = { ...emptyState(), ...st, meta: { ...emptyState().meta, ...(st.meta || {}) } };
+      covers = (await kv.get('covers')) || {};
+    } else {
+      seedSample();
+      await save(true);
+    }
+  } catch (e) {
+    console.error(e);
+    toast('读取本地数据失败');
+  }
+  await loadBackupInfo();
+  if (kv.mode === 'memory') toast('当前浏览器无法保存数据（可能是无痕模式），刷新后会丢失');
+  try { if (navigator.storage && navigator.storage.persist && !(await navigator.storage.persisted())) navigator.storage.persist(); } catch (e) { /* 忽略 */ }
+  parseRoute();
+  render();
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+}
+boot();
+</script>
+</body>
+</html>
